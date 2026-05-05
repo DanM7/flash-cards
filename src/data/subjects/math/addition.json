@@ -1,0 +1,20 @@
+{
+  "subject": "math",
+  "operation": "addition",
+  "cards": [
+    { "prompt": "2 + 3", "answers": ["5", "five"] },
+    { "prompt": "4 + 4", "answers": ["8", "eight"] },
+    { "prompt": "6 + 3", "answers": ["9", "nine"] },
+    { "prompt": "5 + 5", "answers": ["10", "ten"] },
+    { "prompt": "7 + 2", "answers": ["9", "nine"] },
+    { "prompt": "8 + 1", "answers": ["9", "nine"] },
+    { "prompt": "3 + 6", "answers": ["9", "nine"] },
+    { "prompt": "4 + 5", "answers": ["9", "nine"] },
+    { "prompt": "2 + 7", "answers": ["9", "nine"] },
+    { "prompt": "10 + 0", "answers": ["10", "ten"] },
+    { "prompt": "3 + 4", "answers": ["7", "seven"] },
+    { "prompt": "5 + 2", "answers": ["7", "seven"] },
+    { "prompt": "6 + 4", "answers": ["10", "ten"] },
+    { "prompt": "9 + 1", "answers": ["10", "ten"] }
+  ]
+}

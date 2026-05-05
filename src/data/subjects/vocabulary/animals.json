@@ -1,0 +1,8 @@
+{
+  "subject": "vocabulary",
+  "topic": "animals",
+  "cards": [
+    { "prompt": "A large animal with a trunk", "answers": ["elephant"] },
+    { "prompt": "A farm bird that says cluck", "answers": ["chicken"] }
+  ]
+}
