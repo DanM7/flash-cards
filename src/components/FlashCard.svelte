@@ -1,11 +1,13 @@
 <script lang="ts">
   export let prompt = "";
   export let cue = "Say this word";
+  /** Smaller text for sentence-length prompts. */
+  export let compact = false;
 </script>
 
 <article class="flash">
   <p class="flash__label">{cue}</p>
-  <p class="flash__word">{prompt}</p>
+  <p class="flash__word" class:flash__word--compact={compact}>{prompt}</p>
 </article>
 
 <style>
@@ -52,5 +54,11 @@
     letter-spacing: -0.02em;
     color: var(--fc-text);
     word-break: break-word;
+  }
+
+  .flash__word--compact {
+    font-size: clamp(1.35rem, 5vw, 1.75rem);
+    line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 </style>

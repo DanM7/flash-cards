@@ -96,20 +96,24 @@
   $: playTitle =
     deck.subject === "sight-words"
       ? "Sight words"
-      : deck.subject === "math"
-        ? "Math facts"
-        : deck.subject === "vocabulary"
-          ? "Vocabulary"
-          : "Practice";
+      : deck.subject === "math" && deck.operation === "decimal-operations"
+        ? "Decimal Operations"
+        : deck.subject === "math"
+          ? "Math facts"
+          : deck.subject === "vocabulary"
+            ? "Vocabulary"
+            : "Practice";
 
   $: playSubtitle =
     deck.subject === "sight-words"
       ? `Grade ${deck.grade}`
-      : deck.subject === "math"
-        ? `${deck.operation.slice(0, 1).toUpperCase()}${deck.operation.slice(1)}`
-        : deck.subject === "vocabulary"
-          ? deck.topic
-          : "";
+      : deck.subject === "math" && "unitLabel" in deck && deck.unitLabel
+        ? deck.unitLabel
+        : deck.subject === "math"
+          ? `${deck.operation.slice(0, 1).toUpperCase()}${deck.operation.slice(1)}`
+          : deck.subject === "vocabulary"
+            ? deck.topic
+            : "";
 
   $: promptThing = deck.subject === "math" ? "problem" : "word";
   $: flashCue = deck.subject === "math" ? "Solve this" : "Say this word";
@@ -119,7 +123,7 @@
     !encouragementBreak &&
     (!autoMic ||
       feedback?.matchType === "ambiguous" ||
-      (micReady && !postBreakMicCooldown && !hidePromptForPostBreakWarmup));
+      (micReady && !hidePromptForPostBreakWarmup));
 
   $: pauseAllowed =
     Boolean(currentCard) &&
@@ -192,12 +196,14 @@
       encouragementBreak = false;
       postBreakMicCooldown = true;
       hidePromptForPostBreakWarmup = true;
-      suppressFinalScoringUntil = 0;
       liveTranscript = "";
       liveCandidates = [];
-      micReady = false;
+      /* Keep mic session alive (no stop/start) — only gate prompt + scoring briefly. */
+      micReady = true;
+      suppressFinalScoringUntil = Date.now() + POST_BREAK_MIC_MS + POST_BREAK_PROMPT_AND_SCORE_MS;
       window.setTimeout(() => {
         postBreakMicCooldown = false;
+        hidePromptForPostBreakWarmup = false;
       }, POST_BREAK_MIC_MS);
     }, ENCOURAGEMENT_BREAK_MS);
   };
@@ -277,7 +283,14 @@
 
   const handleFinalSpeechSegment = (segmentPrimary: string, candidates: string[]) => {
     const card = latestCard;
-    if (!card || latestEncouragementBreak || latestAmbiguous || latestSessionPaused) {
+    if (
+      !card ||
+      latestEncouragementBreak ||
+      latestAmbiguous ||
+      latestSessionPaused ||
+      postBreakMicCooldown ||
+      hidePromptForPostBreakWarmup
+    ) {
       return;
     }
     if (Date.now() < suppressFinalScoringUntil) {
@@ -378,12 +391,11 @@
     }
   };
 
+  /** Keep recognition running through encouragement/post-break so mobile OS does not replay the “recording” sound each cycle. */
   $: wantContinuousMic =
     autoMic &&
     SpeechRecognizer.isSupported() &&
     currentCard != null &&
-    !encouragementBreak &&
-    !postBreakMicCooldown &&
     !sessionPaused &&
     feedback?.matchType !== "ambiguous";
 
@@ -495,9 +507,9 @@
     {#if encouragementBreak}
       <div class="fc-encourage fc-surface" role="status">
         <p class="fc-encourage__msg">{encouragementMessage}</p>
-        <p class="fc-muted">Short listening break</p>
+        <p class="fc-muted">Quick breather</p>
         <p class="fc-muted fc-muted--small">
-          Next {promptThing} appears when we’re ready to hear you again.
+          The microphone stays active in the background so your phone does not restart recording for each break.
         </p>
       </div>
     {:else}

@@ -1,23 +1,41 @@
 <script lang="ts">
   import HomeRoute from "./routes/index.svelte";
   import PlayRoute from "./routes/play.svelte";
-  import { getDeckById } from "./data/decks";
-  import type { SubjectDeck } from "./data/CardTypes";
+  import MultipleChoiceMode from "./modes/multiple-choice/MultipleChoiceMode.svelte";
+  import { getDeckOptionById, resolveDeck } from "./data/decks";
+  import type { InteractionMode, SubjectDeck } from "./data/CardTypes";
 
   type View = "home" | "play";
 
   let view: View = "home";
   let selectedDeck: SubjectDeck | null = null;
   let useMicrophone = false;
+  let interaction: InteractionMode = "voice-or-type";
+  let timed = false;
 
-  const start = (event: CustomEvent<{ deckId: string; useMicrophone: boolean }>) => {
+  const start = (
+    event: CustomEvent<{
+      deckId: string;
+      useMicrophone: boolean;
+      interaction: InteractionMode;
+      timed: boolean;
+    }>
+  ) => {
+    const option = getDeckOptionById(event.detail.deckId);
+    if (!option) {
+      return;
+    }
     useMicrophone = event.detail.useMicrophone;
-    selectedDeck = getDeckById(event.detail.deckId);
+    interaction = event.detail.interaction;
+    timed = event.detail.timed;
+    selectedDeck = resolveDeck(option);
     view = "play";
   };
 
   const backToHome = () => {
     useMicrophone = false;
+    interaction = "voice-or-type";
+    timed = false;
     selectedDeck = null;
     view = "home";
   };
@@ -28,7 +46,11 @@
     {#if view === "home"}
       <HomeRoute on:start={start} />
     {:else if view === "play" && selectedDeck}
-      <PlayRoute deck={selectedDeck} autoMic={useMicrophone} on:back={backToHome} />
+      {#if interaction === "multiple-choice"}
+        <MultipleChoiceMode deck={selectedDeck} {timed} on:back={backToHome} />
+      {:else}
+        <PlayRoute deck={selectedDeck} autoMic={useMicrophone} on:back={backToHome} />
+      {/if}
     {/if}
   </main>
 </div>

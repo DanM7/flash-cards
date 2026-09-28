@@ -1,8 +1,24 @@
-export type SubjectType = "sight-words" | "math" | "vocabulary" | "custom";
+export type SubjectType = "sight-words" | "math" | "science" | "french" | "vocabulary" | "custom";
+
+export type MathOperation =
+  | "addition"
+  | "subtraction"
+  | "multiplication"
+  | "division"
+  | "mixed"
+  | "fractions"
+  | "decimal-operations"
+  | "order-of-operations";
+
+export type InteractionMode = "voice-or-type" | "multiple-choice";
 
 export interface Card {
   prompt: string;
   answers: string[];
+  /** When present, play as multiple choice (exactly one of these matches answers[0]). */
+  choices?: string[];
+  /** Optional help text shown when the learner opens Hint. */
+  hint?: string;
   acceptableTranscripts?: string[];
   ambiguousTranscripts?: string[];
 }
@@ -19,7 +35,21 @@ export interface SightWordsDeck extends BaseDeck {
 
 export interface MathDeck extends BaseDeck {
   subject: "math";
-  operation: "addition" | "subtraction" | "multiplication";
+  operation: MathOperation;
+  grade?: number;
+  unitLabel?: string;
+}
+
+export interface ScienceDeck extends BaseDeck {
+  subject: "science";
+  grade: number;
+  unitLabel: string;
+}
+
+export interface FrenchDeck extends BaseDeck {
+  subject: "french";
+  grade: number;
+  unitLabel: string;
 }
 
 export interface VocabularyDeck extends BaseDeck {
@@ -31,4 +61,10 @@ export interface CustomDeck extends BaseDeck {
   subject: "custom";
 }
 
-export type SubjectDeck = SightWordsDeck | MathDeck | VocabularyDeck | CustomDeck;
+export type SubjectDeck =
+  | SightWordsDeck
+  | MathDeck
+  | ScienceDeck
+  | FrenchDeck
+  | VocabularyDeck
+  | CustomDeck;
