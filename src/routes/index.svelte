@@ -620,6 +620,26 @@
     color: #a16207;
   }
 
+  .home-grade--orange,
+  .home-topic--orange {
+    background: linear-gradient(160deg, rgba(255, 237, 213, 0.9) 0%, #fff 55%);
+    border-color: rgba(234, 88, 12, 0.2);
+  }
+
+  .home-grade--orange:hover:not(:disabled) {
+    border-color: rgba(234, 88, 12, 0.45);
+  }
+
+  .home-grade--orange .home-grade__badge,
+  .home-topic--orange .home-topic__badge {
+    background: var(--fc-accent-soft);
+    color: #c2410c;
+  }
+
+  .home-grade__subject--orange strong {
+    color: #c2410c;
+  }
+
   .home-topic--disabled {
     opacity: 0.6;
     filter: grayscale(1);

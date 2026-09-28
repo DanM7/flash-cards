@@ -1,4 +1,11 @@
-export type SubjectType = "sight-words" | "math" | "science" | "french" | "vocabulary" | "custom";
+export type SubjectType =
+  | "sight-words"
+  | "math"
+  | "science"
+  | "french"
+  | "geography"
+  | "vocabulary"
+  | "custom";
 
 export type MathOperation =
   | "addition"
@@ -19,6 +26,8 @@ export interface Card {
   choices?: string[];
   /** Optional help text shown when the learner opens Hint. */
   hint?: string;
+  /** Show a map with this country (ISO numeric id) highlighted instead of the prompt text. */
+  map?: { countryId: string };
   acceptableTranscripts?: string[];
   ambiguousTranscripts?: string[];
 }
@@ -52,6 +61,12 @@ export interface FrenchDeck extends BaseDeck {
   unitLabel: string;
 }
 
+export interface GeographyDeck extends BaseDeck {
+  subject: "geography";
+  grade: number;
+  unitLabel: string;
+}
+
 export interface VocabularyDeck extends BaseDeck {
   subject: "vocabulary";
   topic: string;
@@ -66,5 +81,6 @@ export type SubjectDeck =
   | MathDeck
   | ScienceDeck
   | FrenchDeck
+  | GeographyDeck
   | VocabularyDeck
   | CustomDeck;

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from "svelte";
+  import CountryMap from "../../components/CountryMap.svelte";
   import FlashCard from "../../components/FlashCard.svelte";
   import type { Card, SubjectDeck } from "../../data/CardTypes";
   import { ROUND_SIZE } from "../../data/subjects/math/decimalOperations";
@@ -167,10 +168,15 @@
           ? "Science"
           : deck.subject === "french"
             ? "French"
-            : "Practice";
+            : deck.subject === "geography"
+              ? "Geography"
+              : "Practice";
 
   $: playSubtitleBase =
-    (deck.subject === "math" || deck.subject === "science" || deck.subject === "french") &&
+    (deck.subject === "math" ||
+      deck.subject === "science" ||
+      deck.subject === "french" ||
+      deck.subject === "geography") &&
     deck.unitLabel
       ? deck.unitLabel
       : deck.subject === "math" && deck.grade
@@ -352,11 +358,15 @@
           </div>
         {/if}
 
-        <FlashCard
-          prompt={paused ? "PAUSED" : currentCard.prompt}
-          cue={paused ? "Tap Resume to keep going" : isMath ? "Solve this" : "Answer this"}
-          compact={!isMath && !paused}
-        />
+        {#if currentCard.map && !paused}
+          <CountryMap countryId={currentCard.map.countryId} cue={currentCard.prompt} />
+        {:else}
+          <FlashCard
+            prompt={paused ? "PAUSED" : currentCard.prompt}
+            cue={paused ? "Tap Resume to keep going" : isMath ? "Solve this" : "Answer this"}
+            compact={!isMath && !paused}
+          />
+        {/if}
 
         <div class="fc-panel fc-surface">
           <p class="fc-label">Choose the answer</p>

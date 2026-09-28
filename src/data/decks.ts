@@ -16,12 +16,13 @@ import {
   humanBodyDeck
 } from "./subjects/science/grade6";
 import { createColorsDeck } from "./subjects/french/grade6";
+import { CONTINENTS } from "./subjects/geography/countries";
 
 export type GradeLevel = 2 | 3 | 4 | 5 | 6;
 
-export type SubjectKey = "math" | "science" | "french" | "reading" | "history";
+export type SubjectKey = "math" | "science" | "french" | "reading" | "history" | "geography";
 
-export type SubjectColor = "red" | "green" | "purple" | "blue" | "yellow";
+export type SubjectColor = "red" | "green" | "purple" | "blue" | "yellow" | "orange";
 
 /** Each subject keeps the same color everywhere it appears. */
 export const subjectColors: Record<SubjectKey, SubjectColor> = {
@@ -29,7 +30,8 @@ export const subjectColors: Record<SubjectKey, SubjectColor> = {
   science: "green",
   french: "purple",
   reading: "blue",
-  history: "yellow"
+  history: "yellow",
+  geography: "orange"
 };
 
 export const colorForSubject = (subject: SubjectType | SubjectKey): SubjectColor | undefined => {
@@ -59,8 +61,8 @@ export interface DeckOption {
   interaction: InteractionMode;
   /** Static deck, or omit when createDeck is used. */
   deck?: SubjectDeck;
-  /** Fresh deck each play (e.g. randomized decimal ops). */
-  createDeck?: () => SubjectDeck;
+  /** Fresh deck each play (e.g. randomized decimal ops); may load its data on demand. */
+  createDeck?: () => SubjectDeck | Promise<SubjectDeck>;
 }
 
 export const gradeOptions: GradeOption[] = [
@@ -101,12 +103,13 @@ export const gradeOptions: GradeOption[] = [
     subjects: [
       { subject: "math", label: "Math", summary: "Decimal operations, with more units coming." },
       { subject: "science", label: "Science", summary: "Cells, human body, genetics, evolution, and environment." },
-      { subject: "french", label: "French", summary: "Color words, with more units coming." }
+      { subject: "french", label: "French", summary: "Color words, with more units coming." },
+      { subject: "geography", label: "Geography", summary: "Name countries on the map, continent by continent." }
     ]
   }
 ];
 
-export type SubjectArea = "math" | "science" | "french";
+export type SubjectArea = "math" | "science" | "french" | "geography";
 
 export interface SubjectAreaOption {
   id: SubjectArea;
@@ -140,6 +143,12 @@ export const sixthGradeSubjectAreas: SubjectAreaOption[] = [
     label: "French",
     blurb: "Communication, colors, food, and school, starting with Colors.",
     available: true
+  },
+  {
+    id: "geography",
+    label: "Geography",
+    blurb: "Countries of the world on the map, one continent per unit.",
+    available: true
   }
 ];
 
@@ -171,10 +180,19 @@ export const sixthGradeFrenchUnits: UnitOption[] = [
   { unit: 4, title: "School" }
 ];
 
+const geographyDeckId = (continent: string, unit: number) => `geography-${continent}-unit${unit}`;
+
+export const sixthGradeGeographyUnits: UnitOption[] = CONTINENTS.map((group) => ({
+  unit: group.unit,
+  title: group.title,
+  deckId: geographyDeckId(group.id, group.unit)
+}));
+
 export const unitsBySubjectArea: Record<SubjectArea, UnitOption[]> = {
   math: sixthGradeMathUnits,
   science: sixthGradeScienceUnits,
-  french: sixthGradeFrenchUnits
+  french: sixthGradeFrenchUnits,
+  geography: sixthGradeGeographyUnits
 };
 
 /** Grades that pick a subject first; grades not listed go straight to their decks. */
@@ -359,7 +377,20 @@ export const deckOptions: DeckOption[] = [
     subject: "french",
     interaction: "multiple-choice",
     createDeck: createColorsDeck
-  }
+  },
+  ...CONTINENTS.map(
+    (group): DeckOption => ({
+      id: geographyDeckId(group.id, group.unit),
+      grade: 6,
+      badge: `Geography · Unit ${group.unit}`,
+      title: `Unit ${group.unit}: ${group.title}`,
+      description: `Name all ${group.countries.length} countries of ${group.title} from a blank map.`,
+      subject: "geography",
+      interaction: "multiple-choice",
+      // The map data is large, so it only loads once a geography deck starts.
+      createDeck: async () => (await import("./subjects/geography/grade6")).createCountriesDeck(group.id)
+    })
+  )
 ];
 
 export function getDecksForGrade(grade: GradeLevel): DeckOption[] {
@@ -370,9 +401,9 @@ export function getDeckOptionById(id: string): DeckOption | null {
   return deckOptions.find((option) => option.id === id) ?? null;
 }
 
-export function resolveDeck(option: DeckOption): SubjectDeck {
+export async function resolveDeck(option: DeckOption): Promise<SubjectDeck> {
   if (option.createDeck) {
-    return option.createDeck();
+    return await option.createDeck();
   }
   if (option.deck) {
     return option.deck;
@@ -380,7 +411,7 @@ export function resolveDeck(option: DeckOption): SubjectDeck {
   throw new Error(`Deck option "${option.id}" has no deck.`);
 }
 
-export function getDeckById(id: string): SubjectDeck | null {
+export async function getDeckById(id: string): Promise<SubjectDeck | null> {
   const option = getDeckOptionById(id);
-  return option ? resolveDeck(option) : null;
+  return option ? await resolveDeck(option) : null;
 }

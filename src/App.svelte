@@ -12,8 +12,9 @@
   let useMicrophone = false;
   let interaction: InteractionMode = "voice-or-type";
   let timed = false;
+  let startRequest = 0;
 
-  const start = (
+  const start = async (
     event: CustomEvent<{
       deckId: string;
       useMicrophone: boolean;
@@ -25,10 +26,15 @@
     if (!option) {
       return;
     }
+    const request = ++startRequest;
+    const deck = await resolveDeck(option);
+    if (request !== startRequest) {
+      return;
+    }
     useMicrophone = event.detail.useMicrophone;
     interaction = event.detail.interaction;
     timed = event.detail.timed;
-    selectedDeck = resolveDeck(option);
+    selectedDeck = deck;
     view = "play";
   };
 
