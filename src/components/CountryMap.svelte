@@ -92,6 +92,7 @@
       <svg
         class="map-card__map"
         viewBox="{view.x} {view.y} {view.width} {view.height}"
+        preserveAspectRatio="xMidYMid slice"
         role="img"
         aria-label="Blank map with one country highlighted"
       >
@@ -136,7 +137,11 @@
 
 <style>
   .map-card {
-    padding: var(--fc-space-md);
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(var(--fc-space-sm), 1.8vh, var(--fc-space-md));
     border-radius: var(--fc-radius-lg);
     background: #fff;
     border: 1px solid var(--fc-border);
@@ -145,6 +150,7 @@
   }
 
   .map-card__label {
+    flex: none;
     margin: 0 0 var(--fc-space-sm);
     font-size: 0.8125rem;
     font-weight: 800;
@@ -153,18 +159,26 @@
     color: var(--fc-text-muted);
   }
 
-  .map-card__frame {
-    position: relative;
-  }
-
-  .map-card__map,
+  /* 3:2 when there's room; on short screens it gets shorter and the map crops top/bottom. */
+  .map-card__frame,
   .map-card__placeholder {
-    display: block;
+    position: relative;
+    flex: 0 1 auto;
     width: 100%;
     aspect-ratio: 3 / 2;
+    min-height: 8rem;
+    overflow: hidden;
     border-radius: var(--fc-radius-md);
     border: 1px solid #d4d4d4;
     background: #fff;
+  }
+
+  .map-card__map {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
   }
 
   .map-card__placeholder {

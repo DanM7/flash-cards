@@ -1,11 +1,13 @@
 import type { Card, GeographyDeck } from "../../CardTypes";
 import { countryDistance, hasCountry, neighborIdsOf } from "./atlas";
-import { CONTINENTS, type Continent, type Country } from "./countries";
+import { GEOGRAPHY_UNITS, type Country } from "./countries";
 
-/** Wrong answers come from this many of the closest countries on the same continent. */
+/** Wrong answers come from this many of the closest countries in the same unit. */
 const NEAREST_POOL = 6;
 
-const nameById = new Map(CONTINENTS.flatMap((group) => group.countries.map((country) => [country.id, country.name])));
+const nameById = new Map(
+  GEOGRAPHY_UNITS.flatMap((group) => group.countries.map((country) => [country.id, country.name]))
+);
 
 const shuffle = <T>(items: T[]): T[] => {
   const next = [...items];
@@ -19,11 +21,11 @@ const shuffle = <T>(items: T[]): T[] => {
 const joinNames = (names: string[]): string =>
   names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
-const buildHint = (country: Country, continentIds: Set<string>): string => {
+const buildHint = (country: Country, unitIds: Set<string>): string => {
   const firstLetter = `It starts with "${country.name[0]}"`;
   const borders = neighborIdsOf(country.id).filter((id) => nameById.has(id));
-  const sameContinent = borders.filter((id) => continentIds.has(id));
-  const shown = shuffle(sameContinent.length > 0 ? sameContinent : borders)
+  const sameUnit = borders.filter((id) => unitIds.has(id));
+  const shown = shuffle(sameUnit.length > 0 ? sameUnit : borders)
     .slice(0, 2)
     .map((id) => nameById.get(id) as string);
   return shown.length > 0
@@ -31,15 +33,11 @@ const buildHint = (country: Country, continentIds: Set<string>): string => {
     : `${firstLetter} and has no land borders.`;
 };
 
-export const createCountriesDeck = (continent: Continent): GeographyDeck => {
-  const group = CONTINENTS.find((candidate) => candidate.id === continent);
-  if (!group) {
-    throw new Error(`Unknown continent "${continent}".`);
-  }
-  const countries = group.countries.filter((country) => hasCountry(country.id));
-  const continentIds = new Set(countries.map((country) => country.id));
+const buildCards = (pool: Country[]): Card[] => {
+  const countries = pool.filter((country) => hasCountry(country.id));
+  const unitIds = new Set(countries.map((country) => country.id));
 
-  const cards: Card[] = countries.map((country) => {
+  return countries.map((country) => {
     const nearest = countries
       .filter((other) => other.id !== country.id)
       .sort((a, b) => countryDistance(country.id, a.id) - countryDistance(country.id, b.id))
@@ -51,15 +49,29 @@ export const createCountriesDeck = (continent: Continent): GeographyDeck => {
       prompt: "Which country is highlighted?",
       answers: [country.name],
       choices: shuffle([country.name, ...wrong]),
-      hint: buildHint(country, continentIds),
+      hint: buildHint(country, unitIds),
       map: { countryId: country.id }
     };
   });
+};
 
+export const createCountriesDeck = (unitId: string): GeographyDeck => {
+  const group = GEOGRAPHY_UNITS.find((candidate) => candidate.id === unitId);
+  if (!group) {
+    throw new Error(`Unknown geography unit "${unitId}".`);
+  }
   return {
     subject: "geography",
     grade: 6,
     unitLabel: `Unit ${group.unit}: ${group.title}`,
-    cards
+    cards: buildCards(group.countries)
   };
 };
+
+/** Every country in one deck, mixed together so no continent comes up in a block. */
+export const createFinalCountriesDeck = (): GeographyDeck => ({
+  subject: "geography",
+  grade: 6,
+  unitLabel: "Final: All Countries",
+  cards: shuffle(buildCards(GEOGRAPHY_UNITS.flatMap((group) => group.countries)))
+});

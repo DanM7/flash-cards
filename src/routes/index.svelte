@@ -11,6 +11,7 @@
     type GradeLevel,
     type SubjectArea
   } from "../data/decks";
+  import { readNav, writeNav } from "../nav";
 
   const dispatch = createEventDispatcher<{
     start: {
@@ -40,9 +41,8 @@
   $: headingTitle = selectedArea != null ? `${gradeLabel} · ${selectedAreaLabel}` : gradeLabel;
 
   const readNavFromUrl = () => {
-    const params = new URLSearchParams(window.location.search);
-    const grade = gradeOptions.find((option) => String(option.grade) === params.get("grade"))?.grade ?? null;
-    const subject = params.get("subject");
+    const { grade: gradeParam, subject } = readNav();
+    const grade = gradeOptions.find((option) => String(option.grade) === gradeParam)?.grade ?? null;
     const area =
       grade == null
         ? undefined
@@ -51,20 +51,12 @@
     selectedArea = area?.id ?? null;
   };
 
-  /** Always writes both keys so the home page reads `?grade=&subject=`. */
-  const writeNavToUrl = (mode: "push" | "replace") => {
-    const params = new URLSearchParams(window.location.search);
-    params.set("grade", selectedGrade == null ? "" : String(selectedGrade));
-    params.set("subject", selectedArea ?? "");
-    const url = `${window.location.pathname}?${params}${window.location.hash}`;
-    if (url === `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-      return;
-    }
-    if (mode === "push") {
-      history.pushState(null, "", url);
-    } else {
-      history.replaceState(null, "", url);
-    }
+  /** The home screen never has a deck open, so mode and unit are always blank here. */
+  const writeNavToUrl = (how: "push" | "replace") => {
+    writeNav(
+      { grade: selectedGrade == null ? "" : String(selectedGrade), subject: selectedArea ?? "", mode: "", unit: "" },
+      how
+    );
   };
 
   onMount(() => {
@@ -184,9 +176,9 @@
           >
             <div class="home-topic__top">
               <span class="home-topic__badge">
-                {selectedAreaLabel} · Unit {unit.unit}{option ? "" : " · Coming soon"}
+                {selectedAreaLabel} · {unit.label ?? `Unit ${unit.unit}`}{option ? "" : " · Coming soon"}
               </span>
-              <h2 class="home-topic__title">Unit {unit.unit}: {unit.title}</h2>
+              <h2 class="home-topic__title">{unit.label ?? `Unit ${unit.unit}`}: {unit.title}</h2>
             </div>
             <p class="home-topic__desc">
               {option ? option.description : "Practice for this unit will be added once the details are ready."}
@@ -681,30 +673,21 @@
   }
 
   .home-topic__actions {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: var(--fc-space-sm);
   }
 
   .home-topic__btn {
     width: 100%;
+    min-width: 0;
     justify-content: center;
     min-height: 3rem;
+    padding: 0 0.5rem;
   }
 
   .home-topic__icon {
     font-size: 1.0625rem;
     opacity: 0.95;
-  }
-
-  @media (min-width: 520px) {
-    .home-topic__actions {
-      flex-direction: row;
-    }
-
-    .home-topic__btn {
-      flex: 1;
-      min-width: 0;
-    }
   }
 </style>

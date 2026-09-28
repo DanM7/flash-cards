@@ -16,7 +16,7 @@ import {
   humanBodyDeck
 } from "./subjects/science/grade6";
 import { createColorsDeck } from "./subjects/french/grade6";
-import { CONTINENTS } from "./subjects/geography/countries";
+import { GEOGRAPHY_UNITS } from "./subjects/geography/countries";
 
 export type GradeLevel = 2 | 3 | 4 | 5 | 6;
 
@@ -53,6 +53,11 @@ export interface GradeOption {
 
 export interface DeckOption {
   id: string;
+  /**
+   * Stable `?unit=` code, unique within a grade and subject. Never holds the unit
+   * number, so units can be renumbered without breaking saved links.
+   */
+  unit: string;
   grade: GradeLevel;
   title: string;
   badge: string;
@@ -104,7 +109,7 @@ export const gradeOptions: GradeOption[] = [
       { subject: "math", label: "Math", summary: "Decimal operations, with more units coming." },
       { subject: "science", label: "Science", summary: "Cells, human body, genetics, evolution, and environment." },
       { subject: "french", label: "French", summary: "Color words, with more units coming." },
-      { subject: "geography", label: "Geography", summary: "Name countries on the map, continent by continent." }
+      { subject: "geography", label: "Geography", summary: "Name countries on the map, region by region." }
     ]
   }
 ];
@@ -121,6 +126,8 @@ export interface SubjectAreaOption {
 export interface UnitOption {
   unit: number;
   title: string;
+  /** Shown instead of "Unit N" for sections like a final review. */
+  label?: string;
   /** Units without a deck are listed as coming soon. */
   deckId?: string;
 }
@@ -147,7 +154,7 @@ export const sixthGradeSubjectAreas: SubjectAreaOption[] = [
   {
     id: "geography",
     label: "Geography",
-    blurb: "Countries of the world on the map, one continent per unit.",
+    blurb: "Countries of the world on the map, one region per unit.",
     available: true
   }
 ];
@@ -180,13 +187,19 @@ export const sixthGradeFrenchUnits: UnitOption[] = [
   { unit: 4, title: "School" }
 ];
 
-const geographyDeckId = (continent: string, unit: number) => `geography-${continent}-unit${unit}`;
+const geographyDeckId = (unitId: string, unit: number) => `geography-${unitId}-unit${unit}`;
 
-export const sixthGradeGeographyUnits: UnitOption[] = CONTINENTS.map((group) => ({
-  unit: group.unit,
-  title: group.title,
-  deckId: geographyDeckId(group.id, group.unit)
-}));
+const GEOGRAPHY_FINAL_DECK_ID = "geography-final";
+const GEOGRAPHY_COUNTRY_COUNT = GEOGRAPHY_UNITS.reduce((total, group) => total + group.countries.length, 0);
+
+export const sixthGradeGeographyUnits: UnitOption[] = [
+  ...GEOGRAPHY_UNITS.map((group) => ({
+    unit: group.unit,
+    title: group.title,
+    deckId: geographyDeckId(group.id, group.unit)
+  })),
+  { unit: GEOGRAPHY_UNITS.length + 1, label: "Final", title: "All Countries", deckId: GEOGRAPHY_FINAL_DECK_ID }
+];
 
 export const unitsBySubjectArea: Record<SubjectArea, UnitOption[]> = {
   math: sixthGradeMathUnits,
@@ -224,6 +237,14 @@ export const subjectAreasByGrade: Partial<Record<GradeLevel, SubjectAreaOption[]
   6: sixthGradeSubjectAreas
 };
 
+const wholeNumberUnitCodes: Record<WholeNumberTopic, string> = {
+  add: "addition",
+  sub: "subtraction",
+  mul: "multiplication",
+  div: "division",
+  mixed: "mixed"
+};
+
 const wholeNumberDeckOption = (
   grade: WholeNumberGrade,
   topic: WholeNumberTopic,
@@ -231,6 +252,7 @@ const wholeNumberDeckOption = (
   description: string
 ): DeckOption => ({
   id: `math-grade${grade}-${topic}`,
+  unit: wholeNumberUnitCodes[topic],
   grade,
   badge: "Math",
   title,
@@ -242,6 +264,7 @@ const wholeNumberDeckOption = (
 
 const grade5DeckOption = (topic: Grade5Topic, title: string, description: string): DeckOption => ({
   id: `math-grade5-${topic}`,
+  unit: topic,
   grade: 5,
   badge: "Math",
   title,
@@ -261,6 +284,7 @@ export const deckOptions: DeckOption[] = [
   wholeNumberDeckOption(3, "mixed", "All Four Operations", "A mix of +, −, ×, and ÷ problems."),
   {
     id: "sight-words-grade4",
+    unit: "sight-words",
     grade: 4,
     badge: "Reading",
     title: "Sight Words",
@@ -272,6 +296,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "math-addition-grade4",
+    unit: "addition-facts",
     grade: 4,
     badge: "Math",
     title: "Addition Facts",
@@ -309,6 +334,7 @@ export const deckOptions: DeckOption[] = [
   grade5DeckOption("mixed", "Mixed Review", "A mix of every 5th grade topic."),
   {
     id: "decimal-operations-unit1",
+    unit: "decimal-operations",
     grade: 6,
     badge: "Math · Unit 1",
     title: "Unit 1: Decimal Operations",
@@ -320,6 +346,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "science-cells-unit1",
+    unit: "cells",
     grade: 6,
     badge: "Science · Unit 1",
     title: "Unit 1: Cells",
@@ -330,6 +357,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "science-human-body-unit2",
+    unit: "human-body",
     grade: 6,
     badge: "Science · Unit 2",
     title: "Unit 2: Human Body",
@@ -340,6 +368,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "science-genetics-unit3",
+    unit: "genetics",
     grade: 6,
     badge: "Science · Unit 3",
     title: "Unit 3: Genetics",
@@ -350,6 +379,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "science-evolution-unit4",
+    unit: "evolution",
     grade: 6,
     badge: "Science · Unit 4",
     title: "Unit 4: Evolution",
@@ -360,6 +390,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "science-environmental-unit5",
+    unit: "environmental-science",
     grade: 6,
     badge: "Science · Unit 5",
     title: "Unit 5: Environmental Science",
@@ -370,6 +401,7 @@ export const deckOptions: DeckOption[] = [
   },
   {
     id: "french-colors-unit2",
+    unit: "colors",
     grade: 6,
     badge: "French · Unit 2",
     title: "Unit 2: Colors",
@@ -378,19 +410,31 @@ export const deckOptions: DeckOption[] = [
     interaction: "multiple-choice",
     createDeck: createColorsDeck
   },
-  ...CONTINENTS.map(
+  ...GEOGRAPHY_UNITS.map(
     (group): DeckOption => ({
       id: geographyDeckId(group.id, group.unit),
+      unit: group.id,
       grade: 6,
       badge: `Geography · Unit ${group.unit}`,
       title: `Unit ${group.unit}: ${group.title}`,
-      description: `Name all ${group.countries.length} countries of ${group.title} from a blank map.`,
+      description: `Name all ${group.countries.length} countries of ${group.region} from a blank map.`,
       subject: "geography",
       interaction: "multiple-choice",
       // The map data is large, so it only loads once a geography deck starts.
       createDeck: async () => (await import("./subjects/geography/grade6")).createCountriesDeck(group.id)
     })
-  )
+  ),
+  {
+    id: GEOGRAPHY_FINAL_DECK_ID,
+    unit: "final",
+    grade: 6,
+    badge: "Geography · Final",
+    title: "Final: All Countries",
+    description: `All ${GEOGRAPHY_COUNTRY_COUNT} countries in random order, mixed across every continent.`,
+    subject: "geography",
+    interaction: "multiple-choice",
+    createDeck: async () => (await import("./subjects/geography/grade6")).createFinalCountriesDeck()
+  }
 ];
 
 export function getDecksForGrade(grade: GradeLevel): DeckOption[] {
@@ -399,6 +443,20 @@ export function getDecksForGrade(grade: GradeLevel): DeckOption[] {
 
 export function getDeckOptionById(id: string): DeckOption | null {
   return deckOptions.find((option) => option.id === id) ?? null;
+}
+
+/** Finds a deck from `?grade=&subject=&unit=`; a blank subject matches any subject in the grade. */
+export function findDeckByUnit(grade: string, subject: string, unit: string): DeckOption | null {
+  const code = unit.trim().toLowerCase();
+  if (!code) {
+    return null;
+  }
+  return (
+    deckOptions.find(
+      (option) =>
+        String(option.grade) === grade && (!subject || option.subject === subject) && option.unit === code
+    ) ?? null
+  );
 }
 
 export async function resolveDeck(option: DeckOption): Promise<SubjectDeck> {

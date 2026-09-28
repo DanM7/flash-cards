@@ -22,8 +22,9 @@
   let currentCardIndex = 0;
   let shuffledCards: Card[] = [];
   let shuffledChoices: string[] = [];
-  let selectedChoice: string | null = null;
-  let feedback: "correct" | "incorrect" | null = null;
+  let correctChoice: string | null = null;
+  /** Every wrong pick on the current card, so they all stay red. */
+  let wrongChoices: string[] = [];
   let encouragementBreak = false;
   let encouragementMessage = "";
   let locked = false;
@@ -31,12 +32,13 @@
   let potential = 0;
   let wrongAttempts = 0;
   let usedHint = false;
-  let lastPointsEarned: number | null = null;
   let hintOpen = false;
   let completedRoundNumber = 0;
   let timeLeftMs = TIME_LIMIT_MS;
   let timedOut = false;
   let paused = false;
+  /** Every game opens on a "Ready?" card; the first question and timer wait for a tap. */
+  let ready = true;
   let timerId: number | null = null;
 
   const stopTimer = () => {
@@ -96,12 +98,11 @@
   };
 
   const resetCardState = () => {
-    selectedChoice = null;
-    feedback = null;
+    correctChoice = null;
+    wrongChoices = [];
     locked = false;
     wrongAttempts = 0;
     usedHint = false;
-    lastPointsEarned = null;
     hintOpen = false;
     timedOut = false;
     paused = false;
@@ -117,8 +118,34 @@
     completedRoundNumber = 0;
     resetCardState();
     prepareCardChoices(shuffledCards[0]);
-    startTimer();
+    stopTimer();
+    ready = true;
   }
+
+  const begin = () => {
+    if (!ready) {
+      return;
+    }
+    ready = false;
+    startTimer();
+  };
+
+  /*
+   * Pointerdown rather than click: the click that opened the game can still be
+   * bubbling to window when this screen mounts, and would skip straight past Ready.
+   */
+  const beginOnPointer = (event: PointerEvent) => {
+    if (ready && !(event.target as Element | null)?.closest("a, button")) {
+      begin();
+    }
+  };
+
+  const beginOnKey = (event: KeyboardEvent) => {
+    if (ready && (event.key === "Enter" || event.key === " ") && !(event.target as Element | null)?.closest("a, button")) {
+      event.preventDefault();
+      begin();
+    }
+  };
 
   $: timerPercent = (timeLeftMs / TIME_LIMIT_MS) * 100;
   $: timerSeconds = Math.ceil(timeLeftMs / 1000);
@@ -235,24 +262,22 @@
   const afterCorrect = (points: number) => {
     score += points;
     potential += POINTS_FIRST_TRY;
-    lastPointsEarned = points;
     advanceAfterCard(650);
   };
 
   const choose = (choice: string) => {
-    if (!currentCard || locked || paused || encouragementBreak || feedback === "correct") {
+    if (!currentCard || locked || paused || encouragementBreak || wrongChoices.includes(choice)) {
       return;
     }
-    selectedChoice = choice;
     if (isCorrectChoice(choice, currentCard)) {
       stopTimer();
-      feedback = "correct";
+      correctChoice = choice;
       locked = true;
       afterCorrect(pointsForCard(wrongAttempts, usedHint));
       return;
     }
     wrongAttempts += 1;
-    feedback = "incorrect";
+    wrongChoices = [...wrongChoices, choice];
   };
 
   const skipCard = () => {
@@ -291,16 +316,9 @@
     }
     timedOut = true;
     locked = true;
-    feedback = null;
-    selectedChoice = null;
     hintOpen = false;
     potential += POINTS_FIRST_TRY;
   }
-
-  const tryAgain = () => {
-    selectedChoice = null;
-    feedback = null;
-  };
 
   const toggleHint = () => {
     if (locked || paused || encouragementBreak) {
@@ -312,6 +330,8 @@
     hintOpen = !hintOpen;
   };
 </script>
+
+<svelte:window on:pointerdown={beginOnPointer} on:keydown={beginOnKey} />
 
 <section class="fc-play">
   <header class="fc-play__header">
@@ -358,28 +378,48 @@
           </div>
         {/if}
 
-        {#if currentCard.map && !paused}
-          <CountryMap countryId={currentCard.map.countryId} cue={currentCard.prompt} />
-        {:else}
-          <FlashCard
-            prompt={paused ? "PAUSED" : currentCard.prompt}
-            cue={paused ? "Tap Resume to keep going" : isMath ? "Solve this" : "Answer this"}
-            compact={!isMath && !paused}
-          />
-        {/if}
+        <div class="fc-play__card">
+          {#if ready}
+            <FlashCard prompt="Ready?" cue="Tap anywhere to begin" />
+          {:else}
+            <!-- Stays laid out (just hidden) while paused so the PAUSED card matches its size. -->
+            <div class="fc-play__question" class:fc-play__question--hidden={paused} aria-hidden={paused}>
+              {#if currentCard.map}
+                <CountryMap countryId={currentCard.map.countryId} cue={currentCard.prompt} />
+              {:else}
+                <FlashCard
+                  prompt={currentCard.prompt}
+                  cue={isMath ? "Solve this" : "Answer this"}
+                  compact={!isMath}
+                />
+              {/if}
+            </div>
+            {#if paused}
+              <div class="fc-play__overlay">
+                <FlashCard
+                  prompt="PAUSED"
+                  cue="Tap Resume to keep going"
+                  compact={!currentCard.map && !isMath}
+                  fill
+                />
+              </div>
+            {/if}
+          {/if}
+        </div>
 
+        {#if !ready}
         <div class="fc-panel fc-surface">
           <p class="fc-label">Choose the answer</p>
-          <div class="fc-choices" role="group" aria-label="Answer choices">
+          <!-- iOS Safari only applies :active to taps when a touchstart listener exists. -->
+          <div class="fc-choices" role="group" aria-label="Answer choices" on:touchstart|passive={() => {}}>
             {#each shuffledChoices as choice, index (choice)}
               <button
                 type="button"
                 class="fc-choice"
-                class:fc-choice--selected={!paused && selectedChoice === choice}
-                class:fc-choice--correct={(feedback === "correct" && selectedChoice === choice) ||
+                class:fc-choice--correct={correctChoice === choice ||
                   (timedOut && isCorrectChoice(choice, currentCard))}
-                class:fc-choice--wrong={!paused && feedback === "incorrect" && selectedChoice === choice}
-                disabled={locked || paused || encouragementBreak}
+                class:fc-choice--wrong={!paused && wrongChoices.includes(choice)}
+                disabled={locked || paused || encouragementBreak || wrongChoices.includes(choice)}
                 on:click={() => choose(choice)}
               >
                 {paused ? CHOICE_LETTERS[index] : choice}
@@ -388,86 +428,67 @@
           </div>
 
           <div class="fc-actions fc-actions--stack">
-            {#if timed}
-              <div class="fc-timed-row">
+            <!-- Two columns with the answer grid's gap so the buttons line up under the answers. -->
+            <div class="fc-action-row">
+              {#if timed}
                 <button
                   type="button"
-                  class="fc-btn fc-btn--ghost"
+                  class="fc-btn fc-btn--ghost fc-action-btn"
                   on:click={togglePause}
                   disabled={encouragementBreak || locked}
                 >
                   {paused ? "Resume" : "Pause"}
                 </button>
-                {#if timedOut}
-                  <button type="button" class="fc-btn fc-btn--next" on:click={nextAfterTimeUp}>
-                    Next →
-                  </button>
-                {:else}
-                  <button
-                    type="button"
-                    class="fc-btn fc-btn--ghost"
-                    on:click={skipCard}
-                    disabled={encouragementBreak || locked || paused}
-                  >
-                    Skip
-                  </button>
-                {/if}
-              </div>
-            {:else}
-              <button
-                type="button"
-                class="fc-btn fc-btn--ghost fc-actions__full"
-                on:click={skipCard}
-                disabled={encouragementBreak || locked}
-              >
-                Skip
-              </button>
-            {/if}
-            {#if currentCard.hint}
-              <button
-                type="button"
-                class="fc-btn fc-btn--ghost fc-actions__full"
-                on:click={toggleHint}
-                disabled={encouragementBreak || locked || paused}
-                aria-expanded={hintOpen}
-              >
-                {hintOpen ? "Hide hint" : "Hint"}
-              </button>
-            {/if}
+              {:else}
+                <button
+                  type="button"
+                  class="fc-btn fc-btn--ghost fc-action-btn"
+                  class:fc-action-row__span={!currentCard.hint}
+                  on:click={skipCard}
+                  disabled={encouragementBreak || locked}
+                >
+                  Skip
+                </button>
+              {/if}
+              {#if timed || currentCard.hint}
+                <div class="fc-action-pair">
+                  {#if currentCard.hint}
+                    <button
+                      type="button"
+                      class="fc-btn fc-btn--ghost fc-action-btn"
+                      on:click={toggleHint}
+                      disabled={encouragementBreak || locked || paused}
+                      aria-expanded={hintOpen}
+                    >
+                      {hintOpen ? "Hide hint" : "Hint"}
+                    </button>
+                  {/if}
+                  {#if timed && timedOut}
+                    <button type="button" class="fc-btn fc-btn--next fc-action-btn" on:click={nextAfterTimeUp}>
+                      Next →
+                    </button>
+                  {:else if timed}
+                    <button
+                      type="button"
+                      class="fc-btn fc-btn--ghost fc-action-btn"
+                      on:click={skipCard}
+                      disabled={encouragementBreak || locked || paused}
+                    >
+                      Skip
+                    </button>
+                  {/if}
+                </div>
+              {/if}
+            </div>
             {#if hintOpen && !paused && currentCard.hint}
               <div class="fc-hint-panel" role="note">
                 <p class="fc-hint-panel__label">Hint</p>
                 <p class="fc-hint-panel__body">{currentCard.hint}</p>
               </div>
             {/if}
-            {#if feedback === "incorrect" && !paused}
-              <button type="button" class="fc-btn fc-btn--primary fc-actions__full" on:click={tryAgain}>
-                Try again
-              </button>
-            {/if}
           </div>
-
-          {#if timedOut}
-            <div class="fc-feedback fc-feedback--bad">
-              <strong>Time's up! +0</strong>
-              The answer was {currentCard.answers[0]}.
-            </div>
-          {:else if feedback === "correct"}
-            <div class="fc-feedback fc-feedback--ok">
-              <strong>Nice!{lastPointsEarned != null ? ` +${lastPointsEarned}` : ""}</strong>
-              That’s correct.
-            </div>
-          {:else if feedback === "incorrect"}
-            <div class="fc-feedback fc-feedback--bad">
-              <strong>Not quite.</strong>
-              {isDecimal
-                ? "Check the operation and decimal place, then try again."
-                : isMath
-                  ? "Check your work, then try again."
-                  : "Give it another try."}
-            </div>
-          {/if}
         </div>
+        {/if}
       {/if}
     </div>
   {:else}
@@ -491,16 +512,44 @@
   .fc-play {
     display: flex;
     flex-direction: column;
-    gap: var(--fc-space-md);
+    gap: clamp(var(--fc-space-sm), 2vh, var(--fc-space-md));
     flex: 1;
+    min-height: 0;
   }
 
   .fc-play__stage {
     display: flex;
     flex-direction: column;
-    gap: var(--fc-space-md);
+    gap: clamp(var(--fc-space-sm), 2vh, var(--fc-space-md));
     flex: 1;
     min-height: 0;
+  }
+
+  /* The prompt/map is the only part that gives up height when the screen is short. */
+  .fc-play__card {
+    position: relative;
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fc-play__question {
+    flex: 0 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .fc-play__question--hidden {
+    visibility: hidden;
+  }
+
+  .fc-play__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .fc-play__header {
@@ -625,10 +674,11 @@
   }
 
   .fc-panel {
-    padding: var(--fc-space-lg);
+    flex: none;
+    padding: clamp(var(--fc-space-md), 2.5vh, var(--fc-space-lg));
     display: flex;
     flex-direction: column;
-    gap: var(--fc-space-md);
+    gap: clamp(var(--fc-space-sm), 1.8vh, var(--fc-space-md));
   }
 
   .fc-label {
@@ -642,44 +692,51 @@
 
   .fc-choices {
     display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: var(--fc-space-sm);
   }
 
   .fc-choice {
     width: 100%;
     min-height: 3rem;
-    padding: 0.75rem 1rem;
+    padding: clamp(0.5rem, 1.5vh, 0.75rem) clamp(0.5rem, 2vw, 1rem);
     border-radius: var(--fc-radius-md);
     border: 2px solid var(--fc-border-strong);
     background: #fafafa;
     color: var(--fc-text);
     font-family: inherit;
-    font-size: 1.125rem;
+    font-size: clamp(0.9375rem, 3.8vw, 1.125rem);
     font-weight: 800;
     letter-spacing: -0.01em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
     cursor: pointer;
     text-align: center;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 3px 0 rgba(15, 23, 42, 0.12);
     transition:
       border-color 0.15s ease,
       background 0.15s ease,
-      transform 0.14s ease;
+      box-shadow 0.08s ease,
+      transform 0.08s ease;
   }
 
-  .fc-choice:hover:not(:disabled) {
-    border-color: rgba(13, 148, 136, 0.45);
-    background: var(--fc-primary-soft);
+  /* Hover stays neutral: an answer only turns green or red once it's actually chosen. */
+  @media (hover: hover) {
+    .fc-choice:hover:not(:disabled) {
+      border-color: rgba(15, 23, 42, 0.28);
+    }
   }
 
+  /* Pressing sinks the button onto its ledge; the layout box never changes size. */
   .fc-choice:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: translateY(3px);
+    box-shadow: 0 0 0 rgba(15, 23, 42, 0.12), inset 0 2px 4px rgba(15, 23, 42, 0.08);
+    background: #f1f5f9;
   }
 
   .fc-choice:disabled {
     cursor: default;
-  }
-
-  .fc-choice--selected {
-    border-color: var(--fc-primary);
   }
 
   .fc-choice--correct {
@@ -704,18 +761,29 @@
     flex-direction: column;
   }
 
-  .fc-actions__full {
-    width: 100%;
-  }
-
-  .fc-timed-row {
-    display: flex;
-    justify-content: space-between;
+  .fc-action-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: var(--fc-space-sm);
   }
 
-  .fc-timed-row .fc-btn {
-    min-width: 7.5rem;
+  .fc-action-row__span {
+    grid-column: 1 / -1;
+  }
+
+  .fc-action-pair {
+    display: flex;
+    gap: var(--fc-space-sm);
+  }
+
+  .fc-action-pair > .fc-btn {
+    flex: 1 1 0;
+  }
+
+  .fc-action-btn {
+    min-width: 0;
+    padding: 0 0.5rem;
+    font-size: 0.8125rem;
   }
 
   .fc-btn--next {
@@ -751,32 +819,6 @@
     font-weight: 600;
     line-height: 1.5;
     color: #854d0e;
-  }
-
-  .fc-feedback {
-    margin: 0;
-    padding: var(--fc-space-md);
-    border-radius: var(--fc-radius-md);
-    font-size: 0.9375rem;
-    line-height: 1.45;
-  }
-
-  .fc-feedback strong {
-    display: block;
-    margin-bottom: 0.25rem;
-    font-weight: 800;
-  }
-
-  .fc-feedback--ok {
-    background: var(--fc-success-soft);
-    color: #065f46;
-    border: 1px solid rgba(5, 150, 105, 0.35);
-  }
-
-  .fc-feedback--bad {
-    background: var(--fc-danger-soft);
-    color: #991b1b;
-    border: 1px solid rgba(220, 38, 38, 0.22);
   }
 
   .fc-complete {
@@ -828,11 +870,5 @@
 
   .fc-complete__btn {
     min-width: 12rem;
-  }
-
-  @media (min-width: 520px) {
-    .fc-choices {
-      grid-template-columns: 1fr 1fr;
-    }
   }
 </style>

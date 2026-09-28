@@ -3,7 +3,7 @@ import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from
 import { feature, neighbors } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import worldData from "world-atlas/countries-50m.json";
-import { CONTINENTS, type Continent } from "./countries";
+import { GEOGRAPHY_UNITS, type Continent } from "./countries";
 
 interface CountryProperties {
   name: string;
@@ -140,7 +140,7 @@ const FRAME_MAX_DISTANCE = (85 * Math.PI) / 180;
 const OVERVIEW_PADDING = 0.03;
 
 const continentOf = (id: string): Continent | undefined =>
-  CONTINENTS.find((group) => group.countries.some((country) => country.id === id))?.id;
+  GEOGRAPHY_UNITS.find((group) => group.countries.some((country) => country.id === id))?.continent;
 
 const framePoints = (continent: Continent): [number, number][] => {
   const { lon, lat } = CONTINENT_FRAMES[continent];
