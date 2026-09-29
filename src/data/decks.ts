@@ -39,6 +39,9 @@ export const colorForSubject = (subject: SubjectType | SubjectKey): SubjectColor
   return key in subjectColors ? subjectColors[key as SubjectKey] : undefined;
 };
 
+/** Color name for a CSS modifier class, or "" when the subject has no color. */
+export const colorClassFor = (subject: SubjectType | SubjectKey): string => colorForSubject(subject) ?? "";
+
 export interface GradeSubjectSummary {
   subject: SubjectKey;
   label: string;

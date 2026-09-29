@@ -20,7 +20,6 @@
   const CHOICE_LETTERS = ["A", "B", "C", "D", "E", "F"];
 
   let currentCardIndex = 0;
-  let shuffledCards: Card[] = [];
   let shuffledChoices: string[] = [];
   let correctChoice: string | null = null;
   /** Every wrong pick on the current card, so they all stay red. */
@@ -109,23 +108,11 @@
     timeLeftMs = TIME_LIMIT_MS;
   };
 
-  $: if (deck) {
-    shuffledCards = shuffle(deck.cards);
-    currentCardIndex = 0;
-    score = 0;
-    potential = 0;
-    encouragementBreak = false;
-    completedRoundNumber = 0;
-    resetCardState();
-    prepareCardChoices(shuffledCards[0]);
-    stopTimer();
-    ready = true;
-  }
+  // The deck and mode are fixed for this screen; the app remounts it to play another deck.
+  const shuffledCards = shuffle(deck.cards);
+  prepareCardChoices(shuffledCards[0]);
 
   const begin = () => {
-    if (!ready) {
-      return;
-    }
     ready = false;
     startTimer();
   };
@@ -135,13 +122,13 @@
    * bubbling to window when this screen mounts, and would skip straight past Ready.
    */
   const beginOnPointer = (event: PointerEvent) => {
-    if (ready && !(event.target as Element | null)?.closest("a, button")) {
+    if (ready && !(event.target as Element).closest("a, button")) {
       begin();
     }
   };
 
   const beginOnKey = (event: KeyboardEvent) => {
-    if (ready && (event.key === "Enter" || event.key === " ") && !(event.target as Element | null)?.closest("a, button")) {
+    if (ready && (event.key === "Enter" || event.key === " ") && !(event.target as Element).closest("a, button")) {
       event.preventDefault();
       begin();
     }
@@ -183,10 +170,20 @@
           ? `Card ${cardInRound} of ${roundSize} · ${scoreDisplay}`
           : `Round ${currentRound} of ${totalRounds} · Card ${cardInRound} of ${roundSize} · ${scoreDisplay}`;
 
-  $: isMath = deck.subject === "math";
-  $: isDecimal = deck.subject === "math" && deck.operation === "decimal-operations";
+  $: pauseLabel = paused ? "Resume" : "Pause";
+  $: hintLabel = hintOpen ? "Hide hint" : "Hint";
+  $: hintPanelOpen = hintOpen && !paused;
+  $: hintText = currentCard?.hint ?? "";
+  /** While paused the answers show as letters, so the question can't be read off the buttons. */
+  $: choiceLabels = shuffledChoices.map((choice, index) => (paused ? CHOICE_LETTERS[index] : choice));
 
-  $: playTitle =
+  const showsAsCorrect = (choice: string, picked: string | null, revealed: boolean, card: Card): boolean =>
+    picked === choice || (revealed && isCorrectChoice(choice, card));
+
+  const isMath = deck.subject === "math";
+  const isDecimal = deck.subject === "math" && deck.operation === "decimal-operations";
+
+  const playTitle =
     deck.subject === "math" && deck.operation === "decimal-operations"
       ? "Decimal Operations"
       : deck.subject === "math"
@@ -199,7 +196,7 @@
               ? "Geography"
               : "Practice";
 
-  $: playSubtitleBase =
+  const playSubtitleBase =
     (deck.subject === "math" ||
       deck.subject === "science" ||
       deck.subject === "french" ||
@@ -210,7 +207,7 @@
         ? `Grade ${deck.grade}`
         : "Multiple choice";
 
-  $: playSubtitle = `${playSubtitleBase} · ${timed ? "Timed" : "Practice"}`;
+  const playSubtitle = `${playSubtitleBase} · ${timed ? "Timed" : "Practice"}`;
 
   const goToNextCard = () => {
     if (currentCardIndex < shuffledCards.length - 1) {
@@ -224,17 +221,12 @@
   };
 
   const triggerEncouragementBreak = (roundJustFinished: number) => {
-    encouragementMessage =
-      ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)] ??
-      "Nice job!";
+    encouragementMessage = ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)];
     completedRoundNumber = roundJustFinished;
     encouragementBreak = true;
   };
 
   const startNextRound = () => {
-    if (!encouragementBreak) {
-      return;
-    }
     encouragementBreak = false;
     startTimer();
   };
@@ -289,13 +281,6 @@
     advanceAfterCard();
   };
 
-  const nextAfterTimeUp = () => {
-    if (!timedOut) {
-      return;
-    }
-    advanceAfterCard();
-  };
-
   const togglePause = () => {
     if (!timed || locked || encouragementBreak) {
       return;
@@ -309,11 +294,9 @@
     }
   };
 
+  /** The timer only runs while a card is open and unanswered, so there's nothing to check here. */
   function handleTimeUp() {
     stopTimer();
-    if (!currentCard || locked || encouragementBreak) {
-      return;
-    }
     timedOut = true;
     locked = true;
     hintOpen = false;
@@ -394,16 +377,14 @@
                 />
               {/if}
             </div>
-            {#if paused}
-              <div class="fc-play__overlay">
-                <FlashCard
-                  prompt="PAUSED"
-                  cue="Tap Resume to keep going"
-                  compact={!currentCard.map && !isMath}
-                  fill
-                />
-              </div>
-            {/if}
+            <div class="fc-play__overlay" hidden={!paused}>
+              <FlashCard
+                prompt="PAUSED"
+                cue="Tap Resume to keep going"
+                compact={!currentCard.map && !isMath}
+                fill
+              />
+            </div>
           {/if}
         </div>
 
@@ -411,18 +392,17 @@
         <div class="fc-panel fc-surface">
           <p class="fc-label">Choose the answer</p>
           <!-- iOS Safari only applies :active to taps when a touchstart listener exists. -->
-          <div class="fc-choices" role="group" aria-label="Answer choices" on:touchstart|passive={() => {}}>
+          <div class="fc-choices" role="group" aria-label="Answer choices" on:touchstart={() => {}}>
             {#each shuffledChoices as choice, index (choice)}
               <button
                 type="button"
                 class="fc-choice"
-                class:fc-choice--correct={correctChoice === choice ||
-                  (timedOut && isCorrectChoice(choice, currentCard))}
+                class:fc-choice--correct={showsAsCorrect(choice, correctChoice, timedOut, currentCard)}
                 class:fc-choice--wrong={!paused && wrongChoices.includes(choice)}
                 disabled={locked || paused || encouragementBreak || wrongChoices.includes(choice)}
                 on:click={() => choose(choice)}
               >
-                {paused ? CHOICE_LETTERS[index] : choice}
+                {choiceLabels[index]}
               </button>
             {/each}
           </div>
@@ -437,7 +417,7 @@
                   on:click={togglePause}
                   disabled={encouragementBreak || locked}
                 >
-                  {paused ? "Resume" : "Pause"}
+                  {pauseLabel}
                 </button>
               {:else}
                 <button
@@ -460,11 +440,11 @@
                       disabled={encouragementBreak || locked || paused}
                       aria-expanded={hintOpen}
                     >
-                      {hintOpen ? "Hide hint" : "Hint"}
+                      {hintLabel}
                     </button>
                   {/if}
                   {#if timed && timedOut}
-                    <button type="button" class="fc-btn fc-btn--next fc-action-btn" on:click={nextAfterTimeUp}>
+                    <button type="button" class="fc-btn fc-btn--next fc-action-btn" on:click={() => advanceAfterCard()}>
                       Next →
                     </button>
                   {:else if timed}
@@ -480,12 +460,10 @@
                 </div>
               {/if}
             </div>
-            {#if hintOpen && !paused && currentCard.hint}
-              <div class="fc-hint-panel" role="note">
-                <p class="fc-hint-panel__label">Hint</p>
-                <p class="fc-hint-panel__body">{currentCard.hint}</p>
-              </div>
-            {/if}
+            <div class="fc-hint-panel" role="note" hidden={!hintPanelOpen}>
+              <p class="fc-hint-panel__label">Hint</p>
+              <p class="fc-hint-panel__body">{hintText}</p>
+            </div>
           </div>
         </div>
         {/if}
@@ -550,6 +528,10 @@
     inset: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .fc-play__overlay[hidden] {
+    display: none;
   }
 
   .fc-play__header {

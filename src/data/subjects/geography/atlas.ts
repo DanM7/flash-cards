@@ -52,7 +52,8 @@ for (const [id, names] of Object.entries(EXTRA_PARTS)) {
   }
 }
 
-const sphericalArea = (coordinates: Position[][]): number => {
+/** Area in steradians, whichever way the ring winds (a reversed ring would otherwise measure the rest of the globe). */
+export const sphericalArea = (coordinates: Position[][]): number => {
   const area = geoArea({ type: "Polygon", coordinates });
   return area > 2 * Math.PI ? 4 * Math.PI - area : area;
 };
@@ -105,7 +106,7 @@ export const neighborIdsOf = (id: string): string[] => {
   const own = new Set(indexesById.get(id) ?? []);
   const ids = new Set<string>();
   for (const index of own) {
-    for (const other of adjacency[index] ?? []) {
+    for (const other of adjacency[index]) {
       const otherId = features[other].id;
       if (!own.has(other) && otherId != null) {
         ids.add(String(otherId));
@@ -274,7 +275,7 @@ export const renderCountryMap = (id: string, width: number, height: number): Cou
     width,
     height,
     overview,
-    spherePath: path({ type: "Sphere" }) ?? "",
+    spherePath: path({ type: "Sphere" }) as string,
     landPath: land.join(""),
     targetPath: highlighted.join(""),
     focus: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },

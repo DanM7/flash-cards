@@ -275,26 +275,19 @@ const fractionAddSubtract = (): Problem => {
     }
     let a = simplifiedNumerator(b);
     let c = simplifiedNumerator(d);
-    if (!add) {
-      if (a * d === c * b) {
-        continue;
-      }
-      if (a * d < c * b) {
-        [a, b, c, d] = [c, d, a, b];
-      }
+    // Both fractions are in lowest terms with different denominators, so they're never equal
+    // and subtracting the smaller from the larger always leaves a positive answer.
+    if (!add && a * d < c * b) {
+      [a, b, c, d] = [c, d, a, b];
     }
     const lcd = (b * d) / gcd(b, d);
     const scaledA = a * (lcd / b);
     const scaledC = c * (lcd / d);
     const numerator = add ? scaledA + scaledC : scaledA - scaledC;
-    const answer = frac(numerator, lcd);
-    if (!answer) {
-      continue;
-    }
     const symbol = add ? "+" : "−";
     return {
       prompt: `${a}/${b} ${symbol} ${c}/${d}`,
-      answer,
+      answer: frac(numerator, lcd) as string,
       hint: `Use a common denominator of ${lcd}: ${convertStep(a, b, lcd)} and ${convertStep(c, d, lcd)}. Now ${add ? "add" : "subtract"} the numerators, then simplify.`,
       slightlyOff: [frac(numerator + 1, lcd), frac(numerator - 1, lcd)],
       pool: [
@@ -578,6 +571,9 @@ const toCard = (problem: Problem): Card => ({
 
 const generate = (topic: Grade5Topic): Problem =>
   GENERATORS[topic === "mixed" ? pick(SINGLE_TOPICS) : topic]();
+
+/** Internals exposed only so tests can reach safety nets that random decks never hit. */
+export const __testing = { assembleChoices };
 
 export const createGrade5Deck = (topic: Grade5Topic): MathDeck => ({
   subject: "math",

@@ -32,7 +32,6 @@
   let micReady = false;
   let currentCardIndex = 0;
   let transcriptHistory: TranscriptEntry[] = [];
-  let shuffledCards: Card[] = [];
   let encouragementBreak = false;
   let encouragementMessage = "";
   let postBreakMicCooldown = false;
@@ -56,22 +55,8 @@
     return shuffled;
   };
 
-  $: if (deck) {
-    shuffledCards = shuffleCards(deck.cards);
-    currentCardIndex = 0;
-    transcriptHistory = [];
-    answerInput = "";
-    liveTranscript = "";
-    liveCandidates = [];
-    feedback = null;
-    speechError = "";
-    encouragementBreak = false;
-    postBreakMicCooldown = false;
-    hidePromptForPostBreakWarmup = false;
-    suppressFinalScoringUntil = 0;
-    cardsCompletedSinceBreak = 0;
-    sessionPaused = false;
-  }
+  // The deck is fixed for this screen; the app remounts it to play another deck.
+  const shuffledCards = shuffleCards(deck.cards);
 
   $: currentCard = shuffledCards[currentCardIndex] as Card | undefined;
   $: micStatusLabel = micReady ? "ready" : "warming up...";
@@ -93,7 +78,29 @@
   $: latestAmbiguous = feedback?.matchType === "ambiguous";
   $: latestSessionPaused = sessionPaused;
 
-  $: playTitle =
+  $: showPauseScrim = sessionPaused && !encouragementBreak;
+  $: transcriptText = liveTranscript || answerInput || "—";
+  $: candidatesText = liveCandidates.length ? liveCandidates.join(", ") : "—";
+  $: feedbackMessage = describeFeedback(feedback);
+
+  function describeFeedback(result: AnswerInterpretation | null): { tone: string; title: string; detail: string } {
+    if (!result) {
+      return { tone: "", title: "", detail: "" };
+    }
+    if (result.isCorrect) {
+      return { tone: "ok", title: "Nice!", detail: `Matched (${result.matchType}).` };
+    }
+    if (result.matchType === "ambiguous") {
+      return {
+        tone: "maybe",
+        title: "Almost.",
+        detail: `We heard “${result.normalizedInput}”. Try again, or mark correct if that was right.`
+      };
+    }
+    return { tone: "bad", title: "Not quite.", detail: `Accepted: ${result.normalizedAnswers.join(", ")}` };
+  }
+
+  const playTitle =
     deck.subject === "sight-words"
       ? "Sight words"
       : deck.subject === "math" && deck.operation === "decimal-operations"
@@ -104,7 +111,7 @@
             ? "Vocabulary"
             : "Practice";
 
-  $: playSubtitle =
+  const playSubtitle =
     deck.subject === "sight-words"
       ? `Grade ${deck.grade}`
       : deck.subject === "math" && "unitLabel" in deck && deck.unitLabel
@@ -115,8 +122,8 @@
             ? deck.topic
             : "";
 
-  $: promptThing = deck.subject === "math" ? "problem" : "word";
-  $: flashCue = deck.subject === "math" ? "Solve this" : "Say this word";
+  const promptThing = deck.subject === "math" ? "problem" : "word";
+  const flashCue = deck.subject === "math" ? "Solve this" : "Say this word";
 
   /** Typing mode: always show. Mic mode: show only when safe so kids don't speak before capture is ready. */
   $: showPromptCard =
@@ -185,9 +192,7 @@
 
   const triggerEncouragementBreak = () => {
     sessionPaused = false;
-    encouragementMessage =
-      ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)] ??
-      "Nice job!";
+    encouragementMessage = ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)];
     liveTranscript = "";
     liveCandidates = [];
     speechError = "";
@@ -259,11 +264,9 @@
     goToNextCard();
   };
 
+  /** Only reachable from buttons shown while a card is up. */
   const markCorrect = () => {
-    const card = latestCard;
-    if (!card) {
-      return;
-    }
+    const card = latestCard as Card;
     feedback = {
       isCorrect: true,
       matchType: "exact",
@@ -281,6 +284,7 @@
     feedback = null;
   };
 
+  /** SpeechRecognizer only reports a final segment when it heard something, so there's always a candidate to score. */
   const handleFinalSpeechSegment = (segmentPrimary: string, candidates: string[]) => {
     const card = latestCard;
     if (
@@ -297,42 +301,16 @@
       return;
     }
 
-    const heardList =
-      candidates.length > 0 ? candidates : [segmentPrimary].filter((value) => value.trim().length > 0);
+    const { interpretation, winningText } = scoreCandidatesAgainstCard(candidates, segmentPrimary, card);
+    const result = interpretation as AnswerInterpretation;
+    answerInput = winningText;
+    feedback = result;
 
-    const { interpretation, winningText } = scoreCandidatesAgainstCard(
-      candidates,
-      segmentPrimary,
-      card
-    );
-
-    if (!interpretation) {
+    if (result.isCorrect) {
+      afterCorrectAdvance(candidates, card.prompt);
       return;
     }
-
-    answerInput = winningText.trim() ? winningText : segmentPrimary;
-
-    if (!answerInput.trim()) {
-      if (!autoMic) {
-        pushTranscriptHistory(heardList, "empty", card.prompt);
-      }
-      return;
-    }
-
-    if (interpretation.isCorrect) {
-      feedback = interpretation;
-      afterCorrectAdvance(heardList, card.prompt);
-      return;
-    }
-
-    if (interpretation.matchType === "ambiguous") {
-      feedback = interpretation;
-      pushTranscriptHistory(heardList, "ambiguous", card.prompt);
-      return;
-    }
-
-    feedback = interpretation;
-    pushTranscriptHistory(heardList, "incorrect", card.prompt);
+    pushTranscriptHistory(candidates, result.matchType === "ambiguous" ? "ambiguous" : "incorrect", card.prompt);
   };
 
   const trySpeechInput = async () => {
@@ -449,8 +427,7 @@
   });
 
   const onInputChange = (event: Event) => {
-    const target = event.currentTarget as HTMLInputElement | null;
-    evaluateAnswer(target?.value ?? "");
+    evaluateAnswer((event.currentTarget as HTMLInputElement).value);
   };
 </script>
 
@@ -474,20 +451,19 @@
 
   {#if currentCard}
     <div class="fc-play__stage">
-      {#if sessionPaused && !encouragementBreak}
-        <div
-          class="fc-pause-scrim"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="fc-pause-heading"
-        >
-          <p id="fc-pause-heading" class="fc-pause-scrim__title">Paused</p>
-          <p class="fc-pause-scrim__hint">Ready when you are.</p>
-          <button type="button" class="fc-btn fc-btn--primary fc-pause-scrim__go" on:click={resumeSession}>
-            Go!
-          </button>
-        </div>
-      {/if}
+      <div
+        class="fc-pause-scrim"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="fc-pause-heading"
+        hidden={!showPauseScrim}
+      >
+        <p id="fc-pause-heading" class="fc-pause-scrim__title">Paused</p>
+        <p class="fc-pause-scrim__hint">Ready when you are.</p>
+        <button type="button" class="fc-btn fc-btn--primary fc-pause-scrim__go" on:click={resumeSession}>
+          Go!
+        </button>
+      </div>
 
       <div class="fc-progress" aria-label="Progress through deck">
         <div class="fc-progress__track">
@@ -504,26 +480,23 @@
         </div>
       {/if}
 
-    {#if encouragementBreak}
-      <div class="fc-encourage fc-surface" role="status">
-        <p class="fc-encourage__msg">{encouragementMessage}</p>
-        <p class="fc-muted">Quick breather</p>
-        <p class="fc-muted fc-muted--small">
-          The microphone stays active in the background so your phone does not restart recording for each break.
+    <div class="fc-encourage fc-surface" role="status" hidden={!encouragementBreak}>
+      <p class="fc-encourage__msg">{encouragementMessage}</p>
+      <p class="fc-muted">Quick breather</p>
+      <p class="fc-muted fc-muted--small">
+        The microphone stays active in the background so your phone does not restart recording for each break.
+      </p>
+    </div>
+    {#if showPromptCard}
+      <FlashCard prompt={currentCard.prompt} cue={flashCue} />
+    {:else if autoMic && !encouragementBreak}
+      <div class="fc-warmup fc-surface">
+        <div class="fc-warmup__pulse" aria-hidden="true"></div>
+        <p class="fc-warmup__title">Getting microphone ready</p>
+        <p class="fc-muted">
+          The {promptThing} will pop up when listening is on — hang tight!
         </p>
       </div>
-    {:else}
-      {#if showPromptCard}
-        <FlashCard prompt={currentCard.prompt} cue={flashCue} />
-      {:else if autoMic}
-        <div class="fc-warmup fc-surface">
-          <div class="fc-warmup__pulse" aria-hidden="true"></div>
-          <p class="fc-warmup__title">Getting microphone ready</p>
-          <p class="fc-muted">
-            The {promptThing} will pop up when listening is on — hang tight!
-          </p>
-        </div>
-      {/if}
     {/if}
 
     <div class="fc-panel fc-surface">
@@ -602,43 +575,24 @@
         <p class="fc-muted fc-muted--small">Last heard: {liveTranscript}</p>
       {/if}
 
-      {#if speechError}
-        <p class="fc-banner fc-banner--error">{speechError}</p>
-      {/if}
+      <p class="fc-banner fc-banner--error" hidden={!speechError}>{speechError}</p>
 
-      {#if feedback}
-        <div
-          class="fc-feedback"
-          class:fc-feedback--ok={feedback.isCorrect}
-          class:fc-feedback--bad={!feedback.isCorrect && feedback.matchType !== "ambiguous"}
-          class:fc-feedback--maybe={feedback.matchType === "ambiguous"}
-        >
-          {#if feedback.isCorrect}
-            <strong>Nice!</strong>
-            Matched ({feedback.matchType}).
-          {:else if feedback.matchType === "ambiguous"}
-            <strong>Almost.</strong>
-            We heard “{feedback.normalizedInput}”. Try again, or mark correct if that was right.
-          {:else}
-            <strong>Not quite.</strong>
-            Accepted: {feedback.normalizedAnswers.join(", ")}
-          {/if}
-        </div>
-      {/if}
+      <div class="fc-feedback fc-feedback--{feedbackMessage.tone}" hidden={!feedback}>
+        <strong>{feedbackMessage.title}</strong>
+        {feedbackMessage.detail}
+      </div>
 
-      {#if feedback?.matchType === "ambiguous"}
-        <div class="fc-actions fc-actions--tight">
-          <button type="button" class="fc-btn fc-btn--ghost" on:click={retryCard} disabled={sessionPaused}>
-            Try again
-          </button>
-          <button type="button" class="fc-btn fc-btn--primary" on:click={markCorrect} disabled={sessionPaused}>
-            Mark correct
-          </button>
-          <button type="button" class="fc-btn fc-btn--ghost" on:click={skipCard} disabled={sessionPaused}>
-            Skip
-          </button>
-        </div>
-      {/if}
+      <div class="fc-actions fc-actions--tight" hidden={!latestAmbiguous}>
+        <button type="button" class="fc-btn fc-btn--ghost" on:click={retryCard} disabled={sessionPaused}>
+          Try again
+        </button>
+        <button type="button" class="fc-btn fc-btn--primary" on:click={markCorrect} disabled={sessionPaused}>
+          Mark correct
+        </button>
+        <button type="button" class="fc-btn fc-btn--ghost" on:click={skipCard} disabled={sessionPaused}>
+          Skip
+        </button>
+      </div>
     </div>
 
     {#if !encouragementBreak && !sessionPaused}
@@ -647,9 +601,9 @@
         <div class="fc-details__grid">
           <article class="fc-mini">
             <h3 class="fc-mini__title">Transcript</h3>
-            <p class="fc-mini__body">{liveTranscript || answerInput || "—"}</p>
+            <p class="fc-mini__body">{transcriptText}</p>
             <p class="fc-muted fc-muted--small">
-              Candidates: {liveCandidates.length ? liveCandidates.join(", ") : "—"}
+              Candidates: {candidatesText}
             </p>
           </article>
           <article class="fc-mini">
@@ -718,6 +672,11 @@
     border: 1px solid var(--fc-border);
     box-shadow: var(--fc-shadow-lg);
     text-align: center;
+  }
+
+  .fc-pause-scrim[hidden],
+  .fc-actions[hidden] {
+    display: none;
   }
 
   .fc-pause-scrim__title {

@@ -18,8 +18,9 @@ const shuffle = <T>(items: T[]): T[] => {
   return next;
 };
 
+/** Joins one or more names: "A", "A and B", "A, B and C". */
 const joinNames = (names: string[]): string =>
-  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 
 const buildHint = (country: Country, unitIds: Set<string>): string => {
   const firstLetter = `It starts with "${country.name[0]}"`;

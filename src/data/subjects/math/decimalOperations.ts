@@ -249,11 +249,11 @@ const buildChoices = (spec: ProblemSpec, correct: number): string[] => {
   }
 
   // One per kind first so answers come from different mistakes, then fill from leftovers.
-  for (const kind of shuffle([...byKind.keys()])) {
+  for (const [, options] of shuffle([...byKind.entries()])) {
     if (picked.length >= 3) {
       break;
     }
-    const option = shuffle(byKind.get(kind) ?? []).find((d) => isUsable(d.value));
+    const option = shuffle(options).find((d) => isUsable(d.value));
     if (option) {
       take(option.value);
     }
@@ -380,23 +380,16 @@ const randomDecimal = (maxWhole: number, places: 1 | 2): number => {
 
 const randomWhole = (min: number, max: number): number => randomInt(min, max);
 
-const randomOperand = (options: {
-  mustBeDecimal: boolean;
-  money: boolean;
-  maxWhole?: number;
-}): number => {
-  const maxWhole = options.maxWhole ?? (options.money ? 12 : 9);
+const randomOperand = (options: { mustBeDecimal: boolean; money: boolean; maxWhole: number }): number => {
   if (options.mustBeDecimal || Math.random() < 0.55) {
     const places: 1 | 2 = options.money || Math.random() < 0.35 ? 2 : 1;
-    return randomDecimal(maxWhole, places);
+    return randomDecimal(options.maxWhole, places);
   }
-  return randomWhole(1, Math.max(1, maxWhole));
+  return randomWhole(1, Math.max(1, options.maxWhole));
 };
 
+/** Also rejects NaN and Infinity, since neither passes the range check. */
 const isReasonableAnswer = (value: number): boolean => {
-  if (!Number.isFinite(value)) {
-    return false;
-  }
   const abs = Math.abs(value);
   return abs <= 100 && (abs >= 0.01 || abs === 0);
 };
@@ -409,22 +402,13 @@ const chooseUnit = (op: Op): UnitKind => {
   return Math.random() < 0.5 ? "none" : pick(UNIT_CHOICES);
 };
 
-const ensureDecimalOperand = (a: number, b: number, money: boolean): [number, number] => {
-  if (decimalPlaces(a) > 0 || decimalPlaces(b) > 0) {
-    return [a, b];
-  }
-  if (Math.random() < 0.5) {
-    return [randomDecimal(money ? 12 : 9, money ? 2 : 1), b === 0 ? 1 : b];
-  }
-  return [a === 0 ? 1 : a, randomDecimal(money ? 12 : 9, money ? 2 : 1)];
-};
-
 const generateProblem = (): ProblemSpec => {
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const op = pick(OPS);
     const unit = chooseUnit(op);
     const money = unit === "money";
 
+    // At least one operand is always a decimal, since randomDecimal never returns a whole number.
     const bothDecimal = Math.random() < 0.4;
     const decimalOnA = bothDecimal || Math.random() < 0.5;
 
@@ -439,16 +423,11 @@ const generateProblem = (): ProblemSpec => {
       maxWhole: op === "mul" ? 6 : op === "div" ? 8 : money ? 12 : 9
     });
 
-    [a, b] = ensureDecimalOperand(a, b, money);
-
     if (op === "sub" && a < b) {
       [a, b] = [b, a];
     }
 
     if (op === "div") {
-      if (b === 0) {
-        b = randomDecimal(5, 1);
-      }
       // Prefer cleaner quotients: rebuild dividend from divisor × small quotient.
       if (Math.random() < 0.65) {
         const quotient = randomOperand({
@@ -465,10 +444,7 @@ const generateProblem = (): ProblemSpec => {
     }
 
     const correct = roundNice(compute(a, b, op));
-    if (!isReasonableAnswer(correct)) {
-      continue;
-    }
-    if (decimalPlaces(a) === 0 && decimalPlaces(b) === 0) {
+    if (!isReasonableAnswer(correct) || (decimalPlaces(a) === 0 && decimalPlaces(b) === 0)) {
       continue;
     }
 
@@ -495,6 +471,9 @@ const toCard = (spec: ProblemSpec): Card => {
     hint: buildHint(spec)
   };
 };
+
+/** Internals exposed only so tests can reach safety nets that random decks almost never hit. */
+export const __testing = { formatValue, buildChoices, buildHint, toCard };
 
 export const createDecimalOperationsDeck = (): MathDeck => {
   const cards: Card[] = [];

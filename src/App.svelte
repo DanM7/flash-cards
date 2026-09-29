@@ -89,10 +89,8 @@
       timed: boolean;
     }>
   ) => {
-    const option = getDeckOptionById(event.detail.deckId);
-    if (!option) {
-      return;
-    }
+    // Home only offers decks from the catalog.
+    const option = getDeckOptionById(event.detail.deckId) as DeckOption;
     const mode = modeFor(option, event.detail.timed ? "timed" : event.detail.useMicrophone ? "microphone" : "");
     void launch({ option, mode }, "push");
   };

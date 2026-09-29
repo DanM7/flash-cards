@@ -130,8 +130,10 @@
         </button>
       </div>
     </div>
+  {:else if failed}
+    <div class="map-card__placeholder">Couldn't load the map.</div>
   {:else}
-    <div class="map-card__placeholder">{failed ? "Couldn't load the map." : "Loading map…"}</div>
+    <div class="map-card__placeholder">Loading map…</div>
   {/if}
 </article>
 

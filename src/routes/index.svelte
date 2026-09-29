@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import {
-    colorForSubject,
+    colorClassFor,
     gradeOptions,
     getDecksForGrade,
     getDeckOptionById,
@@ -124,7 +124,7 @@
           <span class="home-grade__title">{option.label}</span>
           <span class="home-grade__subjects">
             {#each option.subjects as subject (subject.label)}
-              <span class="home-grade__subject home-grade__subject--{colorForSubject(subject.subject) ?? ''}">
+              <span class="home-grade__subject home-grade__subject--{colorClassFor(subject.subject)}">
                 <strong>{subject.label}:</strong>
                 {subject.summary}
               </span>
@@ -155,7 +155,7 @@
         {#each areas as area (area.id)}
           <button
             type="button"
-            class="home-grade home-grade--{colorForSubject(area.id) ?? ''}"
+            class="home-grade home-grade--{colorClassFor(area.id)}"
             disabled={!area.available}
             on:click={() => chooseArea(area.id)}
           >
@@ -170,7 +170,7 @@
         {#each unitsBySubjectArea[selectedArea] as unit (unit.unit)}
           {@const option = unit.deckId ? getDeckOptionById(unit.deckId) : null}
           <article
-            class="home-topic home-topic--{colorForSubject(selectedArea) ?? ''}"
+            class="home-topic home-topic--{colorClassFor(selectedArea)}"
             class:home-topic--disabled={!option}
             role="listitem"
           >
@@ -209,7 +209,7 @@
     <div class="home-topics" role="list">
       {#each subjects as option (option.id)}
         <article
-          class="home-topic home-topic--{colorForSubject(option.subject) ?? ''}"
+          class="home-topic home-topic--{colorClassFor(option.subject)}"
           role="listitem"
         >
           <div class="home-topic__top">
