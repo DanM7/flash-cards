@@ -66,8 +66,8 @@ describe("App", () => {
   it("opens a typing deck, records it in the URL, and goes back home", async () => {
     await renderApp();
     await click(/^Grade 4/);
-    await startFromTopic("Sight Words", /Typing/);
-    expect(await screen.findByRole("heading", { name: "Sight words" })).toBeInTheDocument();
+    await startFromTopic("Speech & Typing", /Typing/);
+    expect(await screen.findByRole("heading", { name: "Speech & Typing" })).toBeInTheDocument();
     expect(screen.getByText("Typing")).toBeInTheDocument();
     expect(shell()).toHaveClass("fc-shell--fit");
     // 4th grade has no subject step, so the subject stays blank.

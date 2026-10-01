@@ -25,10 +25,12 @@ describe("loadFlashcards", () => {
     expect(data.grades.map((grade) => grade.grade)).toEqual([2, 3, 4, 5, 6]);
     expect(data.subjects.math).toEqual({ label: "Math", color: "red" });
     expect(data.home.tagline).toBe("Practice that fits your grade");
+    expect(data.language).toBe("en-US");
   });
 
   it("fails when a list or section of the file is missing", async () => {
     const complete: Record<string, unknown> = {
+      language: "en-US",
       cards: [],
       grades: [],
       home: {},
@@ -49,6 +51,9 @@ describe("loadFlashcards", () => {
       stubFlashcardsFetch(body);
       return loadFlashcards();
     };
+    await expect(load("language")).rejects.toThrow('The flashcards file has no "language" setting.');
+    await expect(load("language", "")).rejects.toThrow('The flashcards file has no "language" setting.');
+    await expect(load("language", {})).rejects.toThrow('The flashcards file has no "language" setting.');
     for (const key of ["cards", "grades"]) {
       await expect(load(key)).rejects.toThrow(`The flashcards file has no "${key}" list.`);
       await expect(load(key, {})).rejects.toThrow(`The flashcards file has no "${key}" list.`);

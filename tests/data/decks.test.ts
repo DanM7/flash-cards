@@ -105,8 +105,11 @@ describe("deck catalog", () => {
 
   it("filters decks by grade", () => {
     const grade4 = getDecksForGrade(flashcardData, 4);
-    expect(grade4.map((entry) => entry.id)).toEqual(["4-reading-sight-words", "4-math-addition-facts"]);
-    expect(grade4.every((entry) => entry.interaction === "voice-or-type")).toBe(true);
+    expect(grade4.map((entry) => [entry.id, entry.interaction])).toEqual([
+      ["4-reading-sight-words", "voice-or-type"],
+      ["4-reading-vocabulary", "multiple-choice"],
+      ["4-math-addition-facts", "voice-or-type"]
+    ]);
   });
 
   it("lists units with their decks, including coming-soon units and the geography final", () => {
@@ -140,8 +143,12 @@ describe("playTextFor", () => {
     });
     expect(playTextFor(flashcardData, { subject: "math", operation: "addition", cards: [] }).title).toBe("Math facts");
     expect(playTextFor(flashcardData, { subject: "sight-words", grade: 4, cards: [] })).toMatchObject({
-      title: "Sight words",
+      title: "Speech & Typing",
       typingCue: "Say this word"
+    });
+    expect(playTextFor(flashcardData, { subject: "vocabulary", cards: [] })).toMatchObject({
+      title: "Vocabulary",
+      listenCue: "Listen to the word"
     });
   });
 
@@ -205,6 +212,22 @@ describe("resolveDeck", () => {
     const addition = await resolveDeck(option("4-math-addition-facts"), flashcardData);
     expect(addition).toMatchObject({ subject: "math", operation: "addition" });
     expect(addition.cards[0]).toEqual({ prompt: "2 + 3", answers: ["5", "five"] });
+    expect(sightWords).not.toHaveProperty("listen");
+  });
+
+  it.each([
+    ["3-reading-vocabulary", 3, ["house", "friend", "light", "were"]],
+    ["4-reading-vocabulary", 4, ["quiet", "through", "breathe", "lose"]]
+  ])("reads the %s words aloud, to be found among look-alikes", async (id, grade, words) => {
+    const vocabulary = await resolveDeck(option(id), flashcardData);
+    expect(vocabulary).toMatchObject({ subject: "vocabulary", grade, listen: true });
+    expect(vocabulary.cards.map((card) => card.prompt)).toEqual(words);
+    for (const card of vocabulary.cards) {
+      expect(card.answers).toEqual([card.prompt]);
+      expect(card.choices).toHaveLength(4);
+      expect(card.hint).toContain("___");
+      expect(card.hint).not.toContain(card.prompt);
+    }
   });
 
   it("labels each deck for the play screen", async () => {
@@ -217,7 +240,7 @@ describe("resolveDeck", () => {
     expect(await labelOf("5-math-order-of-operations")).toBe("5th Grade · Order of Operations");
     expect(await labelOf("6-math-decimal-operations")).toBe("Unit 1");
     expect(await labelOf("6-science-cells")).toBe("Unit 1: Cells");
-    expect(await labelOf("6-french-colors")).toBe("Unit 2: Colors");
+    expect(await labelOf("6-french-colors")).toBe("Unit 3: Colors");
     expect(await labelOf("6-geography-final")).toBe("Final: All Countries");
   });
 

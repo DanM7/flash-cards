@@ -31,6 +31,9 @@ export const toCard = (flashcard: Flashcard, wrongChoices: number): Card => {
       ? { countryId: flashcard.countryId, continent: flashcard.continent }
       : { countryId: flashcard.countryId };
   }
+  if (flashcard.lang) {
+    card.lang = flashcard.lang;
+  }
   if (flashcard.acceptableTranscripts) {
     card.acceptableTranscripts = flashcard.acceptableTranscripts;
   }

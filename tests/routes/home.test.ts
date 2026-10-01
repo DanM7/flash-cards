@@ -67,19 +67,22 @@ describe("home route", () => {
     expect(hint).toHaveTextContent("Timed with 30 seconds per question.");
   });
 
-  it("goes straight to typing and microphone decks for grades without a subject step", async () => {
+  it("goes straight to the decks for grades without a subject step", async () => {
     const { started } = renderHome();
     await fireEvent.click(gradeButton(4));
     expect(params().grade).toBe("4");
     expect(screen.getByRole("heading", { name: "4th Grade" })).toBeInTheDocument();
     expect(screen.getByText(/Start with typing or the microphone/)).toBeInTheDocument();
 
-    await fireEvent.click(topic("Sight Words").getByRole("button", { name: /Typing/ }));
+    await fireEvent.click(topic("Speech & Typing").getByRole("button", { name: /Typing/ }));
+    await fireEvent.click(topic("Vocabulary").getByRole("button", { name: /Timed/ }));
     await fireEvent.click(topic("Addition Facts").getByRole("button", { name: /Microphone/ }));
     expect(started()).toEqual([
       { deckId: "4-reading-sight-words", useMicrophone: false, interaction: "voice-or-type", timed: false },
+      { deckId: "4-reading-vocabulary", useMicrophone: false, interaction: "multiple-choice", timed: true },
       { deckId: "4-math-addition-facts", useMicrophone: true, interaction: "voice-or-type", timed: false }
     ]);
+    expect(topic("Vocabulary").getByText(/tap that word among look-alikes\. Tap Play again to hear it once more\. 4 words\./)).toBeInTheDocument();
 
     await fireEvent.click(screen.getByRole("button", { name: "← Grades" }));
     expect(gradeButton(4)).toBeInTheDocument();
@@ -164,7 +167,7 @@ describe("home route", () => {
     data.grades[2].pickSubject = true;
     renderHome("?grade=4", data);
     expect(screen.getByText("Pick a subject.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Reading/ })).toHaveTextContent("Sight words for reading fluency.");
+    expect(screen.getByRole("button", { name: /Reading/ })).toHaveTextContent("Sight words out loud or typed, and words to spell by ear.");
   });
 
   it("ignores an unknown grade in the URL", () => {

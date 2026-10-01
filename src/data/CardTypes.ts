@@ -36,6 +36,8 @@ export interface Card {
    * zoomed out to `continent` at the widest.
    */
   map?: { countryId: string; continent?: Continent };
+  /** BCP 47 language of the prompt when it isn't the file's default `language`, e.g. "fr-FR". */
+  lang?: string;
   acceptableTranscripts?: string[];
   ambiguousTranscripts?: string[];
 }
@@ -55,6 +57,8 @@ export interface Flashcard {
   countryId?: string;
   /** The map zooms out to this continent at the widest. */
   continent?: Continent;
+  /** BCP 47 language of the question when it isn't the file's default `language`, e.g. "fr-FR". */
+  lang?: string;
   /** Extra words speech recognition may hear for the answer (e.g. "four" for "for"). */
   acceptableTranscripts?: string[];
 }
@@ -83,6 +87,8 @@ export type DeckBuild =
       deckType?: SubjectType;
       /** Required for math decks. */
       operation?: MathOperation;
+      /** Read each prompt aloud instead of showing it (multiple-choice decks). */
+      listen?: boolean;
     }
   | { type: "wholeNumberOperations"; topic: WholeNumberTopic }
   | { type: "grade5"; topic: Grade5Topic }
@@ -157,6 +163,13 @@ export interface MultipleChoiceSettings {
   };
   /** One is picked at random for each break. */
   encouragement: string[];
+  /** Voice for decks whose prompts are read aloud. */
+  speech: SpeechSettings;
+}
+
+export interface SpeechSettings {
+  /** 1 is normal speed. */
+  rate: number;
 }
 
 export interface TypingAndVoiceSettings {
@@ -173,6 +186,8 @@ export interface PlayText {
   promptName: string;
   /** Shown above the prompt on multiple-choice cards. */
   choiceCue: string;
+  /** Shown above the Play again button on cards that are read aloud. */
+  listenCue: string;
   /** Shown above the prompt on typing and voice cards. */
   typingCue: string;
   finishedTitle: string;
@@ -182,6 +197,8 @@ export interface PlayText {
 
 /** Everything in flashcards.json. */
 export interface FlashcardData {
+  /** BCP 47 language every flashcard is in unless it sets its own `lang`. */
+  language: string;
   home: { tagline: string; intro: string };
   multipleChoice: MultipleChoiceSettings;
   typingAndVoice: TypingAndVoiceSettings;
@@ -205,6 +222,8 @@ export interface DeckInfo {
 interface BaseDeck {
   subject: SubjectType;
   cards: Card[];
+  /** Prompts are read aloud instead of shown. */
+  listen?: boolean;
 }
 
 export interface SightWordsDeck extends BaseDeck {
@@ -239,7 +258,8 @@ export interface GeographyDeck extends BaseDeck {
 
 export interface VocabularyDeck extends BaseDeck {
   subject: "vocabulary";
-  topic: string;
+  topic?: string;
+  grade?: number;
 }
 
 export interface CustomDeck extends BaseDeck {

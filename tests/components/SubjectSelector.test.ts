@@ -13,7 +13,7 @@ describe("SubjectSelector", () => {
     const onSelect = vi.fn();
     component.$on("select", onSelect);
     await fireEvent.click(screen.getByRole("button", { name: "Addition Facts" }));
-    expect(onSelect.mock.calls[0][0].detail).toBe(options[1]);
+    expect(onSelect.mock.calls[0][0].detail).toBe(options[2]);
   });
 
   it("renders an empty list by default", () => {
@@ -29,7 +29,7 @@ describe("select-subject route", () => {
     const onBack = vi.fn();
     component.$on("select", onSelect);
     component.$on("back", onBack);
-    await fireEvent.click(screen.getByRole("button", { name: "Sight Words" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Speech & Typing" }));
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
     expect(onSelect.mock.calls[0][0].detail).toBe(options[0]);
     expect(onBack).toHaveBeenCalled();

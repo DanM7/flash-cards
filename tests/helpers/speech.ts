@@ -1,3 +1,5 @@
+import { vi } from "vitest";
+
 type ResultEvent = {
   results?: { length: number; [index: number]: unknown };
   resultIndex?: number;
@@ -100,6 +102,54 @@ type SpeechWindow = Window & { SpeechRecognition?: unknown; webkitSpeechRecognit
 export const installSpeech = (key: "SpeechRecognition" | "webkitSpeechRecognition" = "SpeechRecognition") => {
   FakeRecognition.reset();
   (window as SpeechWindow)[key] = FakeRecognition;
+};
+
+/** Stand-in for SpeechSynthesisUtterance. */
+export class FakeUtterance {
+  lang = "";
+  rate = 1;
+  voice: { lang: string; name: string } | null = null;
+  onstart: (() => void) | null = null;
+  onend: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+
+  constructor(public text: string) {}
+}
+
+/** Stand-in for window.speechSynthesis, recording what it was asked to read. */
+export class FakeSynthesis {
+  spoken: FakeUtterance[] = [];
+  cancelled = 0;
+
+  constructor(private voices: { lang: string; name: string }[]) {}
+
+  speak(utterance: FakeUtterance) {
+    this.spoken.push(utterance);
+  }
+
+  cancel() {
+    this.cancelled += 1;
+  }
+
+  getVoices() {
+    return this.voices;
+  }
+
+  get latest(): FakeUtterance {
+    return this.spoken[this.spoken.length - 1];
+  }
+
+  get words(): string[] {
+    return this.spoken.map((utterance) => utterance.text);
+  }
+}
+
+/** Lets the browser read aloud until the test ends. */
+export const installSynthesis = (voices: { lang: string; name: string }[] = []) => {
+  const synth = new FakeSynthesis(voices);
+  vi.stubGlobal("speechSynthesis", synth);
+  vi.stubGlobal("SpeechSynthesisUtterance", FakeUtterance);
+  return synth;
 };
 
 export const uninstallSpeech = () => {

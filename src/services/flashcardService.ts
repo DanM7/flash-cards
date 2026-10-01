@@ -26,6 +26,9 @@ export async function loadFlashcards(): Promise<FlashcardData> {
     throw new Error(`Couldn't load flashcards (HTTP ${response.status}).`);
   }
   const json = (await response.json()) as Partial<FlashcardData>;
+  if (typeof json.language !== "string" || !json.language) {
+    throw new Error('The flashcards file has no "language" setting.');
+  }
   for (const key of LISTS) {
     if (!Array.isArray(json[key])) {
       throw new Error(`The flashcards file has no "${key}" list.`);

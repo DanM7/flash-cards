@@ -2,17 +2,21 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import CountryMap from "../../components/CountryMap.svelte";
   import FlashCard from "../../components/FlashCard.svelte";
+  import ListenCard from "../../components/ListenCard.svelte";
   import type { Card, MultipleChoiceSettings, PlayText, SubjectDeck } from "../../data/CardTypes";
+  import { canSpeak, stopSpeaking } from "../../nlp/SpeechSynthesizer";
 
   export let deck: SubjectDeck;
   export let timed = false;
   export let settings: MultipleChoiceSettings;
   export let text: PlayText;
+  /** Language of cards that don't set their own. */
+  export let language: string;
   const dispatch = createEventDispatcher<{ back: void }>();
 
   // Settings and wording are fixed for this screen, like the deck.
-  const { encouragement, scoring } = settings;
-  const { title, choiceCue, finishedTitle, choiceFinished } = text;
+  const { encouragement, scoring, speech } = settings;
+  const { title, choiceCue, listenCue, finishedTitle, choiceFinished } = text;
   const TIME_LIMIT_MS = settings.secondsPerQuestion * 1000;
   const TIMER_TICK_MS = 100;
   const TIME_LOW_MS = settings.lowTimeSeconds * 1000;
@@ -177,6 +181,8 @@
     picked === choice || (revealed && isCorrectChoice(choice, card));
 
   const isMath = deck.subject === "math";
+  /** Listening decks show the word instead when the browser can't read it aloud. */
+  const listen = Boolean(deck.listen) && canSpeak();
 
   const playSubtitleBase =
     (deck.subject === "math" ||
@@ -272,6 +278,7 @@
       startTimer(timeLeftMs);
     } else {
       stopTimer();
+      stopSpeaking();
       paused = true;
     }
   };
@@ -354,6 +361,12 @@
                   countryId={currentCard.map.countryId}
                   continent={currentCard.map.continent}
                   cue={currentCard.prompt}
+                />
+              {:else if listen}
+                <ListenCard
+                  text={currentCard.prompt}
+                  cue={listenCue}
+                  voice={{ lang: currentCard.lang ?? language, rate: speech.rate }}
                 />
               {:else}
                 <FlashCard

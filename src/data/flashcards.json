@@ -1,4 +1,5 @@
 {
+  "language": "en-US",
   "home": {
     "tagline": "Practice that fits your grade",
     "intro": "Short practice rounds for reading, math, science, and French. Pick a grade, choose a topic, and work through shuffled cards at your own pace."
@@ -9,7 +10,8 @@
     "roundSize": 10,
     "wrongChoices": 3,
     "scoring": { "firstTry": 10, "perWrongPick": 3, "hint": 1, "minimum": 1 },
-    "encouragement": ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super!"]
+    "encouragement": ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super!"],
+    "speech": { "rate": 0.85 }
   },
   "typingAndVoice": {
     "cardsBeforeBreak": 5,
@@ -24,12 +26,13 @@
       "title": "Practice",
       "promptName": "word",
       "choiceCue": "Answer this",
+      "listenCue": "Listen, then pick what you hear",
       "typingCue": "Say this word",
       "finishedTitle": "You finished the deck!",
       "choiceFinished": "Nice studying. Head home when you want another round.",
       "typingFinished": "Amazing reading practice. Want another round? Head home and start again."
     },
-    "sight-words": { "title": "Sight words" },
+    "sight-words": { "title": "Speech & Typing" },
     "math": {
       "title": "Math facts",
       "promptName": "problem",
@@ -44,7 +47,11 @@
     "science": { "title": "Science" },
     "french": { "title": "French" },
     "geography": { "title": "Geography" },
-    "vocabulary": { "title": "Vocabulary" }
+    "vocabulary": {
+      "title": "Vocabulary",
+      "listenCue": "Listen to the word",
+      "choiceFinished": "Great listening. Head home when you want another round."
+    }
   },
   "subjects": {
     "math": { "label": "Math", "color": "red" },
@@ -124,6 +131,19 @@
               "build": { "type": "wholeNumberOperations", "topic": "mixed" }
             }
           ]
+        },
+        {
+          "subject": "reading",
+          "summary": "Words to spell by ear.",
+          "blurb": "Hear a word, then find it among look-alikes.",
+          "decks": [
+            {
+              "unit": "vocabulary",
+              "title": "Vocabulary",
+              "description": "Listen to a word read aloud, then tap that word among look-alikes. Tap Play again to hear it once more. {count} words.",
+              "build": { "type": "cards", "category": "vocabulary-grade3", "deckType": "vocabulary", "listen": true }
+            }
+          ]
         }
       ]
     },
@@ -134,14 +154,20 @@
       "subjects": [
         {
           "subject": "reading",
-          "summary": "Sight words for reading fluency.",
+          "summary": "Sight words out loud or typed, and words to spell by ear.",
           "decks": [
             {
               "unit": "sight-words",
-              "title": "Sight Words",
+              "title": "Speech & Typing",
               "description": "Practice high-frequency words aloud or by typing. Cards shuffle each round; with the mic, pause briefly after each word.",
               "interaction": "voice-or-type",
               "build": { "type": "cards", "category": "sight-words-grade4", "deckType": "sight-words" }
+            },
+            {
+              "unit": "vocabulary",
+              "title": "Vocabulary",
+              "description": "Listen to a word read aloud, then tap that word among look-alikes. Tap Play again to hear it once more. {count} words.",
+              "build": { "type": "cards", "category": "vocabulary-grade4", "deckType": "vocabulary", "listen": true }
             }
           ]
         },
@@ -296,21 +322,30 @@
         },
         {
           "subject": "french",
-          "summary": "Color words, with more units coming.",
-          "blurb": "Communication, colors, food, and school, starting with Colors.",
+          "summary": "The alphabet and color words, with more units coming.",
+          "blurb": "Alphabet, communication, colors, food, and school, starting with the Alphabet.",
           "units": [
-            { "label": "Unit 1", "title": "Communication" },
             {
-              "label": "Unit 2",
+              "label": "Unit 1",
+              "title": "Alphabet",
+              "deck": {
+                "unit": "alphabet",
+                "description": "Hear a letter said in French, then pick it, accents included. {count} letters.",
+                "build": { "type": "cards", "category": "french-alphabet-unit1", "listen": true }
+              }
+            },
+            { "label": "Unit 2", "title": "Communication" },
+            {
+              "label": "Unit 3",
               "title": "Colors",
               "deck": {
                 "unit": "colors",
                 "description": "Twelve color words — French to English, English to French, and short example phrases.",
-                "build": { "type": "cards", "category": "french-colors-unit2" }
+                "build": { "type": "cards", "category": "french-colors-unit3" }
               }
             },
-            { "label": "Unit 3", "title": "Food" },
-            { "label": "Unit 4", "title": "School" }
+            { "label": "Unit 4", "title": "Food" },
+            { "label": "Unit 5", "title": "School" }
           ]
         },
         {
@@ -710,42 +745,80 @@
     { "question": "What is a food chain?", "answer": "A path showing how energy moves", "category": "science-environmental-unit5", "choices": ["A list of animals", "A map of the Earth", "A path showing how energy moves", "A type of ecosystem"] },
     { "question": "Which resource can be replaced naturally?", "answer": "Solar energy", "category": "science-environmental-unit5", "choices": ["Coal", "Oil", "Natural gas", "Solar energy"] },
     { "question": "What is pollution?", "answer": "Harmful substances in the environment", "category": "science-environmental-unit5", "choices": ["Clean air", "Harmful substances in the environment", "Recycled materials", "Natural resources"] },
-    { "question": "How do you say \"red\" in French?", "answer": "rouge", "category": "french-colors-unit2", "choices": ["rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"r\": un ballon ___ (a red ball)." },
-    { "question": "What does \"rouge\" mean?", "answer": "red", "category": "french-colors-unit2", "choices": ["red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ballon rouge\"." },
-    { "question": "What does \"un ballon rouge\" mean?", "answer": "a red ball", "category": "french-colors-unit2", "choices": ["a red ball", "a blue ball", "a green ball", "a yellow ball", "a black ball", "a white ball", "a brown ball", "a gray ball", "an orange ball", "a pink ball", "a purple ball", "a beige ball"], "hint": "The color word is \"rouge\"." },
-    { "question": "How do you say \"blue\" in French?", "answer": "bleu", "category": "french-colors-unit2", "choices": ["bleu", "rouge", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": le ciel est ___ (the sky is blue)." },
-    { "question": "What does \"bleu\" mean?", "answer": "blue", "category": "french-colors-unit2", "choices": ["blue", "red", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"le ciel est bleu\"." },
-    { "question": "What does \"le ciel est bleu\" mean?", "answer": "the sky is blue", "category": "french-colors-unit2", "choices": ["the sky is blue", "the sky is red", "the sky is green", "the sky is yellow", "the sky is black", "the sky is white", "the sky is brown", "the sky is gray", "the sky is orange", "the sky is pink", "the sky is purple", "the sky is beige"], "hint": "The color word is \"bleu\"." },
-    { "question": "How do you say \"green\" in French?", "answer": "vert", "category": "french-colors-unit2", "choices": ["vert", "rouge", "bleu", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"v\": une feuille ___ (a green leaf)." },
-    { "question": "What does \"vert\" mean?", "answer": "green", "category": "french-colors-unit2", "choices": ["green", "red", "blue", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une feuille verte\"." },
-    { "question": "What does \"une feuille verte\" mean?", "answer": "a green leaf", "category": "french-colors-unit2", "choices": ["a green leaf", "a red leaf", "a blue leaf", "a yellow leaf", "a black leaf", "a white leaf", "a brown leaf", "a gray leaf", "an orange leaf", "a pink leaf", "a purple leaf", "a beige leaf"], "hint": "\"verte\" is \"vert\" + e because \"feuille\" is feminine." },
-    { "question": "How do you say \"yellow\" in French?", "answer": "jaune", "category": "french-colors-unit2", "choices": ["jaune", "rouge", "bleu", "vert", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"j\": un soleil ___ (a yellow sun)." },
-    { "question": "What does \"jaune\" mean?", "answer": "yellow", "category": "french-colors-unit2", "choices": ["yellow", "red", "blue", "green", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un soleil jaune\"." },
-    { "question": "What does \"un soleil jaune\" mean?", "answer": "a yellow sun", "category": "french-colors-unit2", "choices": ["a yellow sun", "a red sun", "a blue sun", "a green sun", "a black sun", "a white sun", "a brown sun", "a gray sun", "an orange sun", "a pink sun", "a purple sun", "a beige sun"], "hint": "The color word is \"jaune\"." },
-    { "question": "How do you say \"black\" in French?", "answer": "noir", "category": "french-colors-unit2", "choices": ["noir", "rouge", "bleu", "vert", "jaune", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"n\": un chat ___ (a black cat)." },
-    { "question": "What does \"noir\" mean?", "answer": "black", "category": "french-colors-unit2", "choices": ["black", "red", "blue", "green", "yellow", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un chat noir\"." },
-    { "question": "What does \"un chat noir\" mean?", "answer": "a black cat", "category": "french-colors-unit2", "choices": ["a black cat", "a red cat", "a blue cat", "a green cat", "a yellow cat", "a white cat", "a brown cat", "a gray cat", "an orange cat", "a pink cat", "a purple cat", "a beige cat"], "hint": "The color word is \"noir\"." },
-    { "question": "How do you say \"white\" in French?", "answer": "blanc", "category": "french-colors-unit2", "choices": ["blanc", "rouge", "bleu", "vert", "jaune", "noir", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": une chemise ___ (a white shirt)." },
-    { "question": "What does \"blanc\" mean?", "answer": "white", "category": "french-colors-unit2", "choices": ["white", "red", "blue", "green", "yellow", "black", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une chemise blanche\"." },
-    { "question": "What does \"une chemise blanche\" mean?", "answer": "a white shirt", "category": "french-colors-unit2", "choices": ["a white shirt", "a red shirt", "a blue shirt", "a green shirt", "a yellow shirt", "a black shirt", "a brown shirt", "a gray shirt", "an orange shirt", "a pink shirt", "a purple shirt", "a beige shirt"], "hint": "\"blanche\" is the feminine form of \"blanc\" because \"chemise\" is feminine." },
-    { "question": "How do you say \"brown\" in French?", "answer": "marron", "category": "french-colors-unit2", "choices": ["marron", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"m\": un café ___ (a brown coffee)." },
-    { "question": "What does \"marron\" mean?", "answer": "brown", "category": "french-colors-unit2", "choices": ["brown", "red", "blue", "green", "yellow", "black", "white", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un café marron\"." },
-    { "question": "What does \"un café marron\" mean?", "answer": "a brown coffee", "category": "french-colors-unit2", "choices": ["a brown coffee", "a red coffee", "a blue coffee", "a green coffee", "a yellow coffee", "a black coffee", "a white coffee", "a gray coffee", "an orange coffee", "a pink coffee", "a purple coffee", "a beige coffee"], "hint": "The color word is \"marron\"." },
-    { "question": "How do you say \"gray\" in French?", "answer": "gris", "category": "french-colors-unit2", "choices": ["gris", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "orange", "rose", "violet", "beige"], "hint": "It starts with \"g\": un ciel ___ (a gray sky)." },
-    { "question": "What does \"gris\" mean?", "answer": "gray", "category": "french-colors-unit2", "choices": ["gray", "red", "blue", "green", "yellow", "black", "white", "brown", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ciel gris\"." },
-    { "question": "What does \"un ciel gris\" mean?", "answer": "a gray sky", "category": "french-colors-unit2", "choices": ["a gray sky", "a red sky", "a blue sky", "a green sky", "a yellow sky", "a black sky", "a white sky", "a brown sky", "an orange sky", "a pink sky", "a purple sky", "a beige sky"], "hint": "The color word is \"gris\"." },
-    { "question": "How do you say \"orange\" in French?", "answer": "orange", "category": "french-colors-unit2", "choices": ["orange", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "rose", "violet", "beige"], "hint": "It starts with \"o\": une ___ (an orange fruit)." },
-    { "question": "What does \"orange\" mean?", "answer": "orange", "category": "french-colors-unit2", "choices": ["orange", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "pink", "purple", "beige"], "hint": "You'd see it in \"une orange\"." },
-    { "question": "What does \"une orange\" mean?", "answer": "an orange fruit", "category": "french-colors-unit2", "choices": ["an orange fruit", "a red fruit", "a blue fruit", "a green fruit", "a yellow fruit", "a black fruit", "a white fruit", "a brown fruit", "a gray fruit", "a pink fruit", "a purple fruit", "a beige fruit"], "hint": "Here \"orange\" is the fruit itself — same word as the color." },
-    { "question": "How do you say \"pink\" in French?", "answer": "rose", "category": "french-colors-unit2", "choices": ["rose", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "violet", "beige"], "hint": "It starts with \"r\": une fleur ___ (a pink flower)." },
-    { "question": "What does \"rose\" mean?", "answer": "pink", "category": "french-colors-unit2", "choices": ["pink", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "purple", "beige"], "hint": "You'd see it in \"une fleur rose\"." },
-    { "question": "What does \"une fleur rose\" mean?", "answer": "a pink flower", "category": "french-colors-unit2", "choices": ["a pink flower", "a red flower", "a blue flower", "a green flower", "a yellow flower", "a black flower", "a white flower", "a brown flower", "a gray flower", "an orange flower", "a purple flower", "a beige flower"], "hint": "The color word is \"rose\"." },
-    { "question": "How do you say \"purple\" in French?", "answer": "violet", "category": "french-colors-unit2", "choices": ["violet", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "beige"], "hint": "It starts with \"v\": des fleurs ___ (purple flowers)." },
-    { "question": "What does \"violet\" mean?", "answer": "purple", "category": "french-colors-unit2", "choices": ["purple", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "beige"], "hint": "You'd see it in \"des fleurs violettes\"." },
-    { "question": "What does \"des fleurs violettes\" mean?", "answer": "purple flowers", "category": "french-colors-unit2", "choices": ["purple flowers", "red flowers", "blue flowers", "green flowers", "yellow flowers", "black flowers", "white flowers", "brown flowers", "gray flowers", "orange flowers", "pink flowers", "beige flowers"], "hint": "\"violettes\" is \"violet\" made feminine and plural to match \"fleurs\"." },
-    { "question": "How do you say \"beige\" in French?", "answer": "beige", "category": "french-colors-unit2", "choices": ["beige", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet"], "hint": "It starts with \"b\": un canapé ___ (a beige sofa)." },
-    { "question": "What does \"beige\" mean?", "answer": "beige", "category": "french-colors-unit2", "choices": ["beige", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple"], "hint": "You'd see it in \"un canapé beige\"." },
-    { "question": "What does \"un canapé beige\" mean?", "answer": "a beige sofa", "category": "french-colors-unit2", "choices": ["a beige sofa", "a red sofa", "a blue sofa", "a green sofa", "a yellow sofa", "a black sofa", "a white sofa", "a brown sofa", "a gray sofa", "an orange sofa", "a pink sofa", "a purple sofa"], "hint": "The color word is \"beige\"." },
+    { "question": "a", "answer": "a", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["a", "à", "e", "i"] },
+    { "question": "bé", "answer": "b", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["b", "d", "p", "v"] },
+    { "question": "cé", "answer": "c", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["c", "s", "k", "ç"] },
+    { "question": "dé", "answer": "d", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["d", "b", "t", "g"] },
+    { "question": "e", "answer": "e", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["e", "i", "a", "é"], "hint": "Its name sounds like the \"u\" in \"fun\"." },
+    { "question": "effe", "answer": "f", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["f", "v", "s", "h"] },
+    { "question": "gé", "answer": "g", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["g", "j", "h", "c"], "hint": "Its name sounds like \"zhay\", close to the English letter J." },
+    { "question": "ache", "answer": "h", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["h", "a", "k", "x"], "hint": "Its name sounds like \"ash\"." },
+    { "question": "i", "answer": "i", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["i", "e", "y", "î"], "hint": "Its name sounds like the English letter E." },
+    { "question": "ji", "answer": "j", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["j", "g", "i", "y"], "hint": "Its name sounds like \"zhee\"." },
+    { "question": "ka", "answer": "k", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["k", "c", "q", "a"] },
+    { "question": "elle", "answer": "l", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["l", "n", "m", "r"] },
+    { "question": "emme", "answer": "m", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["m", "n", "l", "w"] },
+    { "question": "enne", "answer": "n", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["n", "m", "l", "u"] },
+    { "question": "o", "answer": "o", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["o", "u", "a", "ô"] },
+    { "question": "pé", "answer": "p", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["p", "b", "d", "t"] },
+    { "question": "qu", "answer": "q", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["q", "k", "c", "u"], "hint": "Its name rhymes with the French letter U." },
+    { "question": "erre", "answer": "r", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["r", "l", "h", "a"], "hint": "Its name sounds like \"air\"." },
+    { "question": "esse", "answer": "s", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["s", "c", "z", "x"] },
+    { "question": "té", "answer": "t", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["t", "d", "p", "c"] },
+    { "question": "u", "answer": "u", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["u", "o", "w", "ù"], "hint": "Round your lips to say \"oo\", then say \"ee\" without moving them." },
+    { "question": "vé", "answer": "v", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["v", "w", "b", "f"] },
+    { "question": "double vé", "answer": "w", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["w", "v", "u", "y"], "hint": "Its name means \"double V\"." },
+    { "question": "ixe", "answer": "x", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["x", "s", "z", "i"], "hint": "Its name sounds like \"eeks\"." },
+    { "question": "i grec", "answer": "y", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["y", "i", "g", "j"], "hint": "Its name means \"Greek I\"." },
+    { "question": "zède", "answer": "z", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["z", "s", "x", "d"], "hint": "Its name sounds like \"zed\"." },
+    { "question": "e accent aigu", "answer": "é", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["é", "è", "ê", "e"], "hint": "An accent aigu slants up to the right: ´" },
+    { "question": "e accent grave", "answer": "è", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["è", "é", "ê", "e"], "hint": "An accent grave slants down to the right: `" },
+    { "question": "e accent circonflexe", "answer": "ê", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ê", "é", "è", "ë"], "hint": "An accent circonflexe looks like a little hat: ^" },
+    { "question": "e tréma", "answer": "ë", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ë", "ê", "é", "e"], "hint": "A tréma is two dots above the letter: ¨" },
+    { "question": "a accent grave", "answer": "à", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["à", "á", "â", "a"], "hint": "An accent grave slants down to the right: `" },
+    { "question": "a accent circonflexe", "answer": "â", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["â", "à", "a", "ê"], "hint": "An accent circonflexe looks like a little hat: ^" },
+    { "question": "i accent circonflexe", "answer": "î", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["î", "ï", "i", "ê"], "hint": "An accent circonflexe looks like a little hat: ^" },
+    { "question": "i tréma", "answer": "ï", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ï", "î", "i", "ë"], "hint": "A tréma is two dots above the letter: ¨" },
+    { "question": "o accent circonflexe", "answer": "ô", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ô", "o", "ê", "û"], "hint": "An accent circonflexe looks like a little hat: ^" },
+    { "question": "u accent grave", "answer": "ù", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ù", "û", "u", "ü"], "hint": "An accent grave slants down to the right: `" },
+    { "question": "u accent circonflexe", "answer": "û", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["û", "ù", "u", "ü"], "hint": "An accent circonflexe looks like a little hat: ^" },
+    { "question": "c cédille", "answer": "ç", "category": "french-alphabet-unit1", "lang": "fr-FR", "choices": ["ç", "c", "s", "é"], "hint": "A cédille is a little tail under the letter: ¸" },
+    { "question": "How do you say \"red\" in French?", "answer": "rouge", "category": "french-colors-unit3", "choices": ["rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"r\": un ballon ___ (a red ball)." },
+    { "question": "What does \"rouge\" mean?", "answer": "red", "category": "french-colors-unit3", "choices": ["red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ballon rouge\"." },
+    { "question": "What does \"un ballon rouge\" mean?", "answer": "a red ball", "category": "french-colors-unit3", "choices": ["a red ball", "a blue ball", "a green ball", "a yellow ball", "a black ball", "a white ball", "a brown ball", "a gray ball", "an orange ball", "a pink ball", "a purple ball", "a beige ball"], "hint": "The color word is \"rouge\"." },
+    { "question": "How do you say \"blue\" in French?", "answer": "bleu", "category": "french-colors-unit3", "choices": ["bleu", "rouge", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": le ciel est ___ (the sky is blue)." },
+    { "question": "What does \"bleu\" mean?", "answer": "blue", "category": "french-colors-unit3", "choices": ["blue", "red", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"le ciel est bleu\"." },
+    { "question": "What does \"le ciel est bleu\" mean?", "answer": "the sky is blue", "category": "french-colors-unit3", "choices": ["the sky is blue", "the sky is red", "the sky is green", "the sky is yellow", "the sky is black", "the sky is white", "the sky is brown", "the sky is gray", "the sky is orange", "the sky is pink", "the sky is purple", "the sky is beige"], "hint": "The color word is \"bleu\"." },
+    { "question": "How do you say \"green\" in French?", "answer": "vert", "category": "french-colors-unit3", "choices": ["vert", "rouge", "bleu", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"v\": une feuille ___ (a green leaf)." },
+    { "question": "What does \"vert\" mean?", "answer": "green", "category": "french-colors-unit3", "choices": ["green", "red", "blue", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une feuille verte\"." },
+    { "question": "What does \"une feuille verte\" mean?", "answer": "a green leaf", "category": "french-colors-unit3", "choices": ["a green leaf", "a red leaf", "a blue leaf", "a yellow leaf", "a black leaf", "a white leaf", "a brown leaf", "a gray leaf", "an orange leaf", "a pink leaf", "a purple leaf", "a beige leaf"], "hint": "\"verte\" is \"vert\" + e because \"feuille\" is feminine." },
+    { "question": "How do you say \"yellow\" in French?", "answer": "jaune", "category": "french-colors-unit3", "choices": ["jaune", "rouge", "bleu", "vert", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"j\": un soleil ___ (a yellow sun)." },
+    { "question": "What does \"jaune\" mean?", "answer": "yellow", "category": "french-colors-unit3", "choices": ["yellow", "red", "blue", "green", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un soleil jaune\"." },
+    { "question": "What does \"un soleil jaune\" mean?", "answer": "a yellow sun", "category": "french-colors-unit3", "choices": ["a yellow sun", "a red sun", "a blue sun", "a green sun", "a black sun", "a white sun", "a brown sun", "a gray sun", "an orange sun", "a pink sun", "a purple sun", "a beige sun"], "hint": "The color word is \"jaune\"." },
+    { "question": "How do you say \"black\" in French?", "answer": "noir", "category": "french-colors-unit3", "choices": ["noir", "rouge", "bleu", "vert", "jaune", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"n\": un chat ___ (a black cat)." },
+    { "question": "What does \"noir\" mean?", "answer": "black", "category": "french-colors-unit3", "choices": ["black", "red", "blue", "green", "yellow", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un chat noir\"." },
+    { "question": "What does \"un chat noir\" mean?", "answer": "a black cat", "category": "french-colors-unit3", "choices": ["a black cat", "a red cat", "a blue cat", "a green cat", "a yellow cat", "a white cat", "a brown cat", "a gray cat", "an orange cat", "a pink cat", "a purple cat", "a beige cat"], "hint": "The color word is \"noir\"." },
+    { "question": "How do you say \"white\" in French?", "answer": "blanc", "category": "french-colors-unit3", "choices": ["blanc", "rouge", "bleu", "vert", "jaune", "noir", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": une chemise ___ (a white shirt)." },
+    { "question": "What does \"blanc\" mean?", "answer": "white", "category": "french-colors-unit3", "choices": ["white", "red", "blue", "green", "yellow", "black", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une chemise blanche\"." },
+    { "question": "What does \"une chemise blanche\" mean?", "answer": "a white shirt", "category": "french-colors-unit3", "choices": ["a white shirt", "a red shirt", "a blue shirt", "a green shirt", "a yellow shirt", "a black shirt", "a brown shirt", "a gray shirt", "an orange shirt", "a pink shirt", "a purple shirt", "a beige shirt"], "hint": "\"blanche\" is the feminine form of \"blanc\" because \"chemise\" is feminine." },
+    { "question": "How do you say \"brown\" in French?", "answer": "marron", "category": "french-colors-unit3", "choices": ["marron", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"m\": un café ___ (a brown coffee)." },
+    { "question": "What does \"marron\" mean?", "answer": "brown", "category": "french-colors-unit3", "choices": ["brown", "red", "blue", "green", "yellow", "black", "white", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un café marron\"." },
+    { "question": "What does \"un café marron\" mean?", "answer": "a brown coffee", "category": "french-colors-unit3", "choices": ["a brown coffee", "a red coffee", "a blue coffee", "a green coffee", "a yellow coffee", "a black coffee", "a white coffee", "a gray coffee", "an orange coffee", "a pink coffee", "a purple coffee", "a beige coffee"], "hint": "The color word is \"marron\"." },
+    { "question": "How do you say \"gray\" in French?", "answer": "gris", "category": "french-colors-unit3", "choices": ["gris", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "orange", "rose", "violet", "beige"], "hint": "It starts with \"g\": un ciel ___ (a gray sky)." },
+    { "question": "What does \"gris\" mean?", "answer": "gray", "category": "french-colors-unit3", "choices": ["gray", "red", "blue", "green", "yellow", "black", "white", "brown", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ciel gris\"." },
+    { "question": "What does \"un ciel gris\" mean?", "answer": "a gray sky", "category": "french-colors-unit3", "choices": ["a gray sky", "a red sky", "a blue sky", "a green sky", "a yellow sky", "a black sky", "a white sky", "a brown sky", "an orange sky", "a pink sky", "a purple sky", "a beige sky"], "hint": "The color word is \"gris\"." },
+    { "question": "How do you say \"orange\" in French?", "answer": "orange", "category": "french-colors-unit3", "choices": ["orange", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "rose", "violet", "beige"], "hint": "It starts with \"o\": une ___ (an orange fruit)." },
+    { "question": "What does \"orange\" mean?", "answer": "orange", "category": "french-colors-unit3", "choices": ["orange", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "pink", "purple", "beige"], "hint": "You'd see it in \"une orange\"." },
+    { "question": "What does \"une orange\" mean?", "answer": "an orange fruit", "category": "french-colors-unit3", "choices": ["an orange fruit", "a red fruit", "a blue fruit", "a green fruit", "a yellow fruit", "a black fruit", "a white fruit", "a brown fruit", "a gray fruit", "a pink fruit", "a purple fruit", "a beige fruit"], "hint": "Here \"orange\" is the fruit itself — same word as the color." },
+    { "question": "How do you say \"pink\" in French?", "answer": "rose", "category": "french-colors-unit3", "choices": ["rose", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "violet", "beige"], "hint": "It starts with \"r\": une fleur ___ (a pink flower)." },
+    { "question": "What does \"rose\" mean?", "answer": "pink", "category": "french-colors-unit3", "choices": ["pink", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "purple", "beige"], "hint": "You'd see it in \"une fleur rose\"." },
+    { "question": "What does \"une fleur rose\" mean?", "answer": "a pink flower", "category": "french-colors-unit3", "choices": ["a pink flower", "a red flower", "a blue flower", "a green flower", "a yellow flower", "a black flower", "a white flower", "a brown flower", "a gray flower", "an orange flower", "a purple flower", "a beige flower"], "hint": "The color word is \"rose\"." },
+    { "question": "How do you say \"purple\" in French?", "answer": "violet", "category": "french-colors-unit3", "choices": ["violet", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "beige"], "hint": "It starts with \"v\": des fleurs ___ (purple flowers)." },
+    { "question": "What does \"violet\" mean?", "answer": "purple", "category": "french-colors-unit3", "choices": ["purple", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "beige"], "hint": "You'd see it in \"des fleurs violettes\"." },
+    { "question": "What does \"des fleurs violettes\" mean?", "answer": "purple flowers", "category": "french-colors-unit3", "choices": ["purple flowers", "red flowers", "blue flowers", "green flowers", "yellow flowers", "black flowers", "white flowers", "brown flowers", "gray flowers", "orange flowers", "pink flowers", "beige flowers"], "hint": "\"violettes\" is \"violet\" made feminine and plural to match \"fleurs\"." },
+    { "question": "How do you say \"beige\" in French?", "answer": "beige", "category": "french-colors-unit3", "choices": ["beige", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet"], "hint": "It starts with \"b\": un canapé ___ (a beige sofa)." },
+    { "question": "What does \"beige\" mean?", "answer": "beige", "category": "french-colors-unit3", "choices": ["beige", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple"], "hint": "You'd see it in \"un canapé beige\"." },
+    { "question": "What does \"un canapé beige\" mean?", "answer": "a beige sofa", "category": "french-colors-unit3", "choices": ["a beige sofa", "a red sofa", "a blue sofa", "a green sofa", "a yellow sofa", "a black sofa", "a white sofa", "a brown sofa", "a gray sofa", "an orange sofa", "a pink sofa", "a purple sofa"], "hint": "The color word is \"beige\"." },
     { "question": "Which country is highlighted?", "answer": "Belize", "category": "geography-north-america-continental", "countryId": "084", "continent": "north-america" },
     { "question": "Which country is highlighted?", "answer": "Canada", "category": "geography-north-america-continental", "countryId": "124", "continent": "north-america" },
     { "question": "Which country is highlighted?", "answer": "Costa Rica", "category": "geography-north-america-continental", "countryId": "188", "continent": "north-america" },
@@ -944,9 +1017,13 @@
     { "question": "10 - 3", "answer": "7", "category": "math-subtraction", "acceptedAnswers": ["seven"] },
     { "question": "2 x 3", "answer": "6", "category": "math-multiplication", "acceptedAnswers": ["six"] },
     { "question": "4 x 2", "answer": "8", "category": "math-multiplication", "acceptedAnswers": ["eight"] },
-    { "question": "A large animal with a trunk", "answer": "elephant", "category": "vocabulary-animals" },
-    { "question": "A farm bird that says cluck", "answer": "chicken", "category": "vocabulary-animals" },
-    { "question": "The star at the center of our solar system", "answer": "sun", "category": "vocabulary-science", "acceptedAnswers": ["the sun"] },
-    { "question": "Water in gas form", "answer": "vapor", "category": "vocabulary-science", "acceptedAnswers": ["water vapor"] }
+    { "question": "house", "answer": "house", "category": "vocabulary-grade3", "choices": ["house", "horse", "mouse", "hose"], "hint": "We live in a big blue ___." },
+    { "question": "friend", "answer": "friend", "category": "vocabulary-grade3", "choices": ["friend", "fried", "front", "find"], "hint": "My best ___ sits next to me at lunch." },
+    { "question": "light", "answer": "light", "category": "vocabulary-grade3", "choices": ["light", "night", "lift", "tight"], "hint": "Turn on the ___ so we can see." },
+    { "question": "were", "answer": "were", "category": "vocabulary-grade3", "choices": ["were", "where", "wore", "here"], "hint": "We ___ at the park all day." },
+    { "question": "quiet", "answer": "quiet", "category": "vocabulary-grade4", "choices": ["quiet", "quite", "quit", "quilt"], "hint": "Please be ___ in the library." },
+    { "question": "through", "answer": "through", "category": "vocabulary-grade4", "choices": ["through", "though", "thorough", "tough"], "hint": "The train went ___ the tunnel." },
+    { "question": "breathe", "answer": "breathe", "category": "vocabulary-grade4", "choices": ["breathe", "breath", "bathe", "breeze"], "hint": "Fish ___ underwater with their gills." },
+    { "question": "lose", "answer": "lose", "category": "vocabulary-grade4", "choices": ["lose", "loose", "close", "lost"], "hint": "Don't ___ your library card." }
   ]
 }

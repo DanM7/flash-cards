@@ -55,7 +55,7 @@ describe("play route (typing and voice)", () => {
   describe("typing", () => {
     it("names the deck, and warns when the browser can't listen", () => {
       renderPlay(words("cat"));
-      expect(screen.getByRole("heading", { name: "Sight words" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Speech & Typing" })).toBeInTheDocument();
       expect(screen.getByText("Grade 4")).toBeInTheDocument();
       expect(screen.getByText("Typing")).toBeInTheDocument();
       expect(screen.getByText("Say this word")).toBeInTheDocument();
@@ -175,6 +175,7 @@ describe("play route (typing and voice)", () => {
       [{ subject: "math", operation: "decimal-operations", unitLabel: "Unit 1: Decimal Operations", cards: [] }, "Decimal Operations", "Unit 1: Decimal Operations"],
       [{ subject: "math", operation: "addition", cards: [] }, "Math facts", "Addition"],
       [{ subject: "vocabulary", topic: "Animals", cards: [] }, "Vocabulary", "Animals"],
+      [{ subject: "vocabulary", cards: [] }, "Vocabulary", ""],
       [{ subject: "custom", cards: [] }, "Practice", ""]
     ] as [SubjectDeck, string, string][])("titles a %s deck", (deck, title, subtitle) => {
       renderPlay(deck);

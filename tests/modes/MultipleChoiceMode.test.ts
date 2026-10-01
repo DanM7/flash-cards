@@ -5,6 +5,7 @@ import type { Card, MultipleChoiceSettings, SubjectDeck } from "../../src/data/C
 import { playTextFor } from "../../src/data/decks";
 import MultipleChoiceMode from "../../src/modes/multiple-choice/MultipleChoiceMode.svelte";
 import { flashcardData } from "../helpers/flashcards";
+import { installSynthesis } from "../helpers/speech";
 
 const makeCards = (count: number, extra: Partial<Card> = {}): Card[] =>
   Array.from({ length: count }, (_, i) => ({
@@ -23,7 +24,13 @@ const mathDeck = (count: number, extra: Partial<Card> = {}): SubjectDeck => ({
 
 const renderMode = (deck: SubjectDeck, timed = false, changes: Partial<MultipleChoiceSettings> = {}) => {
   const settings = { ...flashcardData.multipleChoice, ...changes };
-  const result = render(MultipleChoiceMode, { deck, timed, settings, text: playTextFor(flashcardData, deck) });
+  const result = render(MultipleChoiceMode, {
+    deck,
+    timed,
+    settings,
+    text: playTextFor(flashcardData, deck),
+    language: flashcardData.language
+  });
   const onBack = vi.fn();
   result.component.$on("back", onBack);
   return { ...result, onBack };
@@ -361,12 +368,92 @@ describe("MultipleChoiceMode", () => {
     expect(screen.getAllByRole("button", { name: /^\d$/ })).toHaveLength(1);
   });
 
+  describe("listening decks", () => {
+    const vocabularyDeck = (count: number): SubjectDeck => ({
+      subject: "vocabulary",
+      grade: 4,
+      listen: true,
+      cards: makeCards(count)
+    });
+    const waves = () => document.querySelector(".listen__waves");
+
+    it("reads each word aloud instead of showing it, and replays it on request", async () => {
+      const synth = installSynthesis();
+      renderMode(vocabularyDeck(2), false, { speech: { rate: 0.7 } });
+      expect(synth.spoken).toHaveLength(0);
+
+      await begin();
+      expect(screen.getByText("Listen to the word")).toBeInTheDocument();
+      expect(screen.queryByText(/^Q\d$/)).toBeNull();
+      const first = synth.latest.text;
+      expect(synth.latest).toMatchObject({ lang: "en-US", rate: 0.7 });
+
+      expect(waves()).not.toHaveClass("listen__waves--speaking");
+      synth.latest.onstart?.();
+      await tick();
+      expect(waves()).toHaveClass("listen__waves--speaking");
+      synth.latest.onend?.();
+      await tick();
+      expect(waves()).not.toHaveClass("listen__waves--speaking");
+
+      await fireEvent.click(screen.getByRole("button", { name: /Play again/ }));
+      expect(synth.words).toEqual([first, first]);
+
+      await fireEvent.click(screen.getByRole("button", { name: first.replace("Q", "A") }));
+      await wait(650);
+      const second = synth.latest.text;
+      expect(synth.words).toEqual([first, first, second]);
+      expect(second).not.toBe(first);
+
+      const cancelled = synth.cancelled;
+      await fireEvent.click(screen.getByRole("button", { name: second.replace("Q", "A") }));
+      await wait(650);
+      expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
+      expect(synth.cancelled).toBe(cancelled + 1);
+    });
+
+    it("reads a card in its own language, under the general listening cue", async () => {
+      const synth = installSynthesis();
+      renderMode({
+        subject: "french",
+        grade: 6,
+        unitLabel: "Unit 1: Alphabet",
+        listen: true,
+        cards: [{ prompt: "e accent aigu", answers: ["é"], choices: ["é", "è", "ê", "e"], lang: "fr-FR" }]
+      });
+      await begin();
+      expect(screen.getByText("Listen, then pick what you hear")).toBeInTheDocument();
+      expect(synth.latest).toMatchObject({ text: "e accent aigu", lang: "fr-FR" });
+      await fireEvent.click(screen.getByRole("button", { name: "è" }));
+      expect(screen.getByRole("button", { name: "è" })).toHaveClass("fc-choice--wrong");
+      await fireEvent.click(screen.getByRole("button", { name: "é" }));
+      expect(screen.getByRole("button", { name: "é" })).toHaveClass("fc-choice--correct");
+    });
+
+    it("stops reading when paused", async () => {
+      const synth = installSynthesis();
+      renderMode(vocabularyDeck(1), true);
+      await begin();
+      const cancelled = synth.cancelled;
+      await fireEvent.click(screen.getByRole("button", { name: "Pause" }));
+      expect(synth.cancelled).toBe(cancelled + 1);
+    });
+
+    it("shows the word when the browser can't read aloud", async () => {
+      renderMode(vocabularyDeck(1));
+      await begin();
+      expect(prompt()).toBe("Q0");
+      expect(screen.queryByRole("button", { name: /Play again/ })).toBeNull();
+    });
+  });
+
   it.each([
     [{ subject: "math", operation: "decimal-operations", unitLabel: "Unit 1: Decimal Operations", cards: [] }, "Decimal Operations", "Unit 1: Decimal Operations · Practice", "Solid decimal practice."],
     [{ subject: "math", operation: "addition", cards: [] }, "Math facts", "Multiple choice · Practice", "Great math practice."],
     [{ subject: "science", grade: 6, unitLabel: "Unit 2: Human Body", cards: [] }, "Science", "Unit 2: Human Body · Practice", "Nice studying."],
     [{ subject: "french", grade: 6, unitLabel: "", cards: [] }, "French", "Multiple choice · Practice", "Nice studying."],
-    [{ subject: "sight-words", grade: 4, cards: [] }, "Sight words", "Multiple choice · Practice", "Nice studying."],
+    [{ subject: "sight-words", grade: 4, cards: [] }, "Speech & Typing", "Multiple choice · Practice", "Nice studying."],
+    [{ subject: "vocabulary", grade: 4, listen: true, cards: [] }, "Vocabulary", "Multiple choice · Practice", "Great listening."],
     [{ subject: "custom", cards: [] }, "Practice", "Multiple choice · Practice", "Nice studying."]
   ] as [SubjectDeck, string, string, string][])("titles a %s deck and finishes an empty one", (deck, title, subtitle, closing) => {
     renderMode(deck);

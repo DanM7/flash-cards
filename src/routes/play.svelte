@@ -111,7 +111,7 @@
         : deck.subject === "math"
           ? `${deck.operation.slice(0, 1).toUpperCase()}${deck.operation.slice(1)}`
           : deck.subject === "vocabulary"
-            ? deck.topic
+            ? (deck.topic ?? "")
             : "";
 
   /** Typing mode: always show. Mic mode: show only when safe so kids don't speak before capture is ready. */

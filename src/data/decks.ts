@@ -164,6 +164,7 @@ const buildDeck = async (option: DeckOption, data: FlashcardData): Promise<Subje
         grade: option.grade,
         ...(option.unitName ? { unitLabel: option.title } : {}),
         ...(build.operation ? { operation: build.operation } : {}),
+        ...(build.listen ? { listen: true } : {}),
         cards: cardsIn(data.cards, build.category, data.multipleChoice.wrongChoices)
       } as SubjectDeck;
     case "wholeNumberOperations":

@@ -165,6 +165,7 @@
             {timed}
             settings={data.multipleChoice}
             text={playTextFor(data, selectedDeck)}
+            language={data.language}
             on:back={backToHome}
           />
         {:else}

@@ -35,11 +35,38 @@ describe("6th grade science decks", () => {
   });
 });
 
+describe("6th grade French alphabet deck", () => {
+  it("reads every letter aloud in French, accents included", async () => {
+    const alphabet = await deck("6-french-alphabet");
+    expect(alphabet).toMatchObject({ subject: "french", grade: 6, unitLabel: "Unit 1: Alphabet", listen: true });
+    const answers = alphabet.cards.map((card) => card.answers[0]);
+    expect(answers.slice(0, 26).join("")).toBe("abcdefghijklmnopqrstuvwxyz");
+    expect(answers.slice(26)).toEqual(["é", "è", "ê", "ë", "à", "â", "î", "ï", "ô", "ù", "û", "ç"]);
+    for (const card of alphabet.cards) {
+      expect(card.lang).toBe("fr-FR");
+      expect(card.choices).toHaveLength(4);
+      expect(new Set(card.choices).size).toBe(4);
+      expect(card.choices).toContain(card.answers[0]);
+    }
+  });
+
+  it("names accented letters the French way, so each one sounds different", async () => {
+    const byAnswer = new Map((await deck("6-french-alphabet")).cards.map((card) => [card.answers[0], card]));
+    expect(byAnswer.get("é")?.prompt).toBe("e accent aigu");
+    expect(byAnswer.get("ç")?.prompt).toBe("c cédille");
+    expect(byAnswer.get("y")?.prompt).toBe("i grec");
+    expect(byAnswer.get("w")?.prompt).toBe("double vé");
+    expect(new Set([...byAnswer.values()].map((card) => card.prompt)).size).toBe(byAnswer.size);
+  });
+});
+
 describe("6th grade French colors deck", () => {
   it("has three cards per color with four distinct choices", async () => {
     seedRandom(7);
     const colors = await deck("6-french-colors");
-    expect(colors).toMatchObject({ subject: "french", grade: 6, unitLabel: "Unit 2: Colors" });
+    expect(colors).toMatchObject({ subject: "french", grade: 6, unitLabel: "Unit 3: Colors" });
+    expect(colors).not.toHaveProperty("listen");
+    expect(colors.cards.some((card) => "lang" in card)).toBe(false);
     expect(colors.cards).toHaveLength(36);
     for (const card of colors.cards) {
       expect(new Set(card.choices).size).toBe(4);
