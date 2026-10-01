@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import {
-  WHOLE_NUMBER_DECK_SIZE,
-  createWholeNumberDeck,
-  type WholeNumberGrade,
-  type WholeNumberTopic
-} from "../../src/data/subjects/math/wholeNumberOperations";
+import { createWholeNumberDeck, type WholeNumberTopic } from "../../src/data/subjects/math/wholeNumberOperations";
+import { copyMathRules, mathRules } from "../helpers/flashcards";
 import { queueRandom, seedRandom } from "../helpers/random";
+
+const rules = mathRules.wholeNumberOperations;
+
+const info = (grade: number, unitLabel = "Label") => ({ grade, unitLabel });
 
 const parse = (text: string): number => Number(text.replace("−", "-"));
 
@@ -21,7 +21,10 @@ const evaluate = (prompt: string): number => {
   return op === "+" ? a + b : op === "−" ? a - b : op === "×" ? a * b : a / b;
 };
 
-const topics: [WholeNumberGrade, WholeNumberTopic][] = [
+const operands = (prompt: string): number[] =>
+  (/^(−?\d+) [+−×÷] \(?(−?\d+)\)?$/.exec(prompt) as RegExpExecArray).slice(1).map(parse);
+
+const topics: [number, WholeNumberTopic][] = [
   [2, "add"],
   [2, "sub"],
   [2, "mixed"],
@@ -33,12 +36,18 @@ const topics: [WholeNumberGrade, WholeNumberTopic][] = [
 ];
 
 describe("createWholeNumberDeck", () => {
+  it("reads the deck size and number ranges from flashcards.json", () => {
+    expect(rules.deckSize).toBe(20);
+    expect(rules.grades[2].range).toEqual({ min: 0, max: 100 });
+    expect(rules.grades[3].range).toEqual({ min: -1000, max: 1000 });
+  });
+
   it.each(topics)("grade %i %s: every card is solvable with four in-range choices", (grade, topic) => {
-    const [min, max] = grade === 2 ? [0, 100] : [-1000, 1000];
+    const { min, max } = rules.grades[grade].range;
     for (let seed = 1; seed <= 40; seed += 1) {
       seedRandom(seed);
-      const deck = createWholeNumberDeck(grade, topic);
-      expect(deck.cards).toHaveLength(WHOLE_NUMBER_DECK_SIZE);
+      const deck = createWholeNumberDeck(topic, rules, info(grade));
+      expect(deck.cards).toHaveLength(rules.deckSize);
       for (const card of deck.cards) {
         const correct = evaluate(card.prompt);
         expect(card.answers[0]).toBe(correct < 0 ? `−${-correct}` : String(correct));
@@ -55,38 +64,62 @@ describe("createWholeNumberDeck", () => {
     }
   });
 
-  it("labels decks by grade and topic", () => {
-    expect(createWholeNumberDeck(2, "add")).toMatchObject({
+  it("takes its grade and label from the catalog", () => {
+    expect(createWholeNumberDeck("add", rules, info(2, "2nd Grade · Addition"))).toMatchObject({
       subject: "math",
       operation: "addition",
       grade: 2,
       unitLabel: "2nd Grade · Addition"
     });
-    expect(createWholeNumberDeck(3, "mixed")).toMatchObject({ operation: "mixed", unitLabel: "3rd Grade · All Four Operations" });
-    expect(createWholeNumberDeck(3, "div").operation).toBe("division");
+    expect(createWholeNumberDeck("mixed", rules, info(3, "3rd Grade · All Four Operations"))).toMatchObject({
+      operation: "mixed",
+      unitLabel: "3rd Grade · All Four Operations"
+    });
+    expect(createWholeNumberDeck("div", rules, info(3)).operation).toBe("division");
   });
 
-  it("keeps 2nd grade to addition and subtraction", () => {
-    expect(() => createWholeNumberDeck(2, "mul")).toThrow("2nd grade only supports addition and subtraction (got mul).");
+  it("only offers the operations a grade's rules list", () => {
+    expect(() => createWholeNumberDeck("mul", rules, info(2))).toThrow("Grade 2 math rules don't include mul.");
+    const noGrade3 = copyMathRules().wholeNumberOperations;
+    delete noGrade3.grades[3];
+    expect(() => createWholeNumberDeck("add", noGrade3, info(3))).toThrow("No math rules for grade 3.");
   });
 
   it("never goes over 100 in 2nd grade addition, and puts the larger number first in subtraction", () => {
     // 0.99 rolls give 99 + 99, which is too big and gets re-rolled.
     queueRandom([0.5, 0.99, 0.5, 0.99]);
-    const [first] = createWholeNumberDeck(2, "add").cards;
+    const [first] = createWholeNumberDeck("add", rules, info(2)).cards;
     expect(evaluate(first.prompt)).toBeLessThanOrEqual(100);
 
     // First operand 12, second 56: swapped so the answer isn't negative.
     queueRandom([0.5, 0.025, 0.5, 0.52]);
-    const [sub] = createWholeNumberDeck(2, "sub").cards;
+    const [sub] = createWholeNumberDeck("sub", rules, info(2)).cards;
     expect(sub.prompt).toBe("56 − 12");
+  });
+
+  it("follows changed rules: smaller numbers, a different deck size, and fewer operations", () => {
+    const changed = copyMathRules().wholeNumberOperations;
+    changed.deckSize = 5;
+    changed.grades[2].range = { min: 0, max: 20 };
+    changed.grades[2].operations.add = { operand: { min: 1, max: 9 } };
+    delete changed.grades[2].operations.sub;
+    for (let seed = 1; seed <= 20; seed += 1) {
+      seedRandom(seed);
+      const deck = createWholeNumberDeck("mixed", changed, info(2));
+      expect(deck.cards).toHaveLength(5);
+      for (const card of deck.cards) {
+        expect(card.prompt).toContain("+");
+        expect(operands(card.prompt).every((value) => value >= 1 && value <= 9)).toBe(true);
+        expect(evaluate(card.prompt)).toBeLessThanOrEqual(20);
+      }
+    }
   });
 
   it("falls back to nearby numbers when common mistakes can't make three wrong answers", () => {
     // 0 + 0 in 2nd grade: most mistakes land on 0 or below, so nearby numbers fill in.
     for (let seed = 1; seed <= 30; seed += 1) {
       seedRandom(seed);
-      const deck = createWholeNumberDeck(2, "sub");
+      const deck = createWholeNumberDeck("sub", rules, info(2));
       for (const card of deck.cards) {
         expect(new Set(card.choices).size).toBe(4);
       }

@@ -1,9 +1,11 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { SubjectDeck } from "../../src/data/CardTypes";
+import type { SubjectDeck, TypingAndVoiceSettings } from "../../src/data/CardTypes";
+import { playTextFor } from "../../src/data/decks";
 import { SpeechRecognizer } from "../../src/nlp/SpeechRecognizer";
 import PlayRoute from "../../src/routes/play.svelte";
+import { flashcardData } from "../helpers/flashcards";
 import { FakeRecognition, installSpeech, uninstallSpeech } from "../helpers/speech";
 
 const words = (...list: string[]): SubjectDeck => ({
@@ -12,8 +14,9 @@ const words = (...list: string[]): SubjectDeck => ({
   cards: list.map((word) => ({ prompt: word, answers: [word] }))
 });
 
-const renderPlay = (deck: SubjectDeck, autoMic = false) => {
-  const result = render(PlayRoute, { deck, autoMic });
+const renderPlay = (deck: SubjectDeck, autoMic = false, changes: Partial<TypingAndVoiceSettings> = {}) => {
+  const settings = { ...flashcardData.typingAndVoice, ...changes };
+  const result = render(PlayRoute, { deck, autoMic, settings, text: playTextFor(flashcardData, deck) });
   const onBack = vi.fn();
   result.component.$on("back", onBack);
   return { ...result, onBack };
@@ -138,6 +141,15 @@ describe("play route (typing and voice)", () => {
       await wait(1_100);
       await type(prompt());
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("follows the break size, length, and encouragement it's given", async () => {
+      renderPlay(words("a1", "a2", "a3"), false, { cardsBeforeBreak: 2, breakSeconds: 1, encouragement: ["Keep going!"] });
+      await type(prompt());
+      await type(prompt());
+      expect(screen.getByRole("status")).toHaveTextContent("Keep going!");
+      await wait(1_000);
       expect(screen.queryByRole("status")).toBeNull();
     });
 

@@ -1,8 +1,11 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import type { CountryMapRender, ViewBox } from "../data/subjects/geography/atlas";
+  import type { Continent } from "../data/subjects/geography/atlas";
 
   export let countryId: string;
+  /** The zoomed-out view shows this whole continent. */
+  export let continent: Continent | undefined = undefined;
   export let cue = "Name this country";
 
   type Atlas = typeof import("../data/subjects/geography/atlas");
@@ -58,14 +61,14 @@
     animateTo(zoomLevel, STEP_DURATION_MS);
   };
 
-  const load = async (id: string) => {
+  const load = async (id: string, area: Continent | undefined) => {
     requestedId = id;
     try {
       atlas ??= await import("../data/subjects/geography/atlas");
       if (requestedId !== id) {
         return;
       }
-      rendered = atlas.renderCountryMap(id, WIDTH, HEIGHT);
+      rendered = atlas.renderCountryMap(id, WIDTH, HEIGHT, area);
       failed = rendered == null;
       stopAnimation();
       zoomLevel = 0;
@@ -76,23 +79,27 @@
     }
   };
 
-  $: load(countryId);
+  $: load(countryId, continent);
 
   onDestroy(stopAnimation);
 
+  let frameWidth = 0;
+  let frameHeight = 0;
+  $: frameAspect = frameWidth > 0 && frameHeight > 0 ? frameWidth / frameHeight : WIDTH / HEIGHT;
+
   let view: ViewBox | null = null;
-  $: view = atlas && rendered ? atlas.viewBoxAt(rendered, shownZoom) : null;
+  $: view = atlas && rendered ? atlas.viewBoxAt(rendered, shownZoom, frameAspect) : null;
   $: marker = atlas && rendered && view ? atlas.markerAt(rendered, view) : null;
 </script>
 
 <article class="map-card">
   <p class="map-card__label">{cue}</p>
   {#if rendered && view}
-    <div class="map-card__frame">
+    <div class="map-card__frame" bind:clientWidth={frameWidth} bind:clientHeight={frameHeight}>
       <svg
         class="map-card__map"
         viewBox="{view.x} {view.y} {view.width} {view.height}"
-        preserveAspectRatio="xMidYMid slice"
+        preserveAspectRatio="xMidYMid meet"
         role="img"
         aria-label="Blank map with one country highlighted"
       >
@@ -161,7 +168,7 @@
     color: var(--fc-text-muted);
   }
 
-  /* 3:2 when there's room; on short screens it gets shorter and the map crops top/bottom. */
+  /* 3:2 when there's room; on short screens it gets shorter and the map shows a wider area instead. */
   .map-card__frame,
   .map-card__placeholder {
     position: relative;

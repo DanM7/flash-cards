@@ -93,6 +93,17 @@ describe("CountryMap", () => {
     expect(viewBox(svg)[2]).toBeGreaterThan(600);
   });
 
+  it("fits the view to the map window's shape instead of cropping", async () => {
+    vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(900);
+    vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(300);
+    installFrames();
+    setReducedMotion(true);
+    render(CountryMap, { countryId: FRANCE });
+    const svg = await loadedMap();
+    await vi.waitFor(() => expect(viewBox(svg)).toEqual([-300, 0, 1200, 400]));
+    expect(svg.getAttribute("preserveAspectRatio")).toBe("xMidYMid meet");
+  });
+
   it("circles tiny countries", async () => {
     installFrames();
     setReducedMotion(true);

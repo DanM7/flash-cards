@@ -1,17 +1,18 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
+  import type { FlashcardData } from "../data/CardTypes";
   import {
-    colorClassFor,
-    gradeOptions,
+    colorFor,
+    deckDescription,
     getDecksForGrade,
-    getDeckOptionById,
-    subjectAreasByGrade,
-    unitsBySubjectArea,
-    type DeckOption,
-    type GradeLevel,
-    type SubjectArea
+    subjectLabelFor,
+    subjectStepFor,
+    unitsFor,
+    type DeckOption
   } from "../data/decks";
   import { readNav, writeNav } from "../nav";
+
+  export let data: FlashcardData;
 
   const dispatch = createEventDispatcher<{
     start: {
@@ -22,33 +23,37 @@
     };
   }>();
 
-  let selectedGrade: GradeLevel | null = null;
-  let selectedArea: SubjectArea | null = null;
+  let selectedGrade: number | null = null;
+  let selectedArea: string | null = null;
 
   $: subjects =
     selectedGrade == null
       ? []
-      : getDecksForGrade(selectedGrade).filter(
+      : getDecksForGrade(data, selectedGrade).filter(
           (option) => selectedArea == null || option.subject === selectedArea
         );
 
-  $: areas = selectedGrade == null ? undefined : subjectAreasByGrade[selectedGrade];
+  $: areas = selectedGrade == null ? undefined : subjectStepFor(data, selectedGrade);
 
-  $: gradeLabel = gradeOptions.find((option) => option.grade === selectedGrade)?.label ?? "";
+  $: units = selectedGrade == null || selectedArea == null ? null : unitsFor(data, selectedGrade, selectedArea);
 
-  $: selectedAreaLabel = areas?.find((area) => area.id === selectedArea)?.label ?? "";
+  $: hasTypingDecks = subjects.some((option) => option.interaction === "voice-or-type");
+
+  $: gradeLabel = data.grades.find((option) => option.grade === selectedGrade)?.label ?? "";
+
+  $: selectedAreaLabel = selectedArea == null ? "" : subjectLabelFor(data, selectedArea);
 
   $: headingTitle = selectedArea != null ? `${gradeLabel} · ${selectedAreaLabel}` : gradeLabel;
 
   const readNavFromUrl = () => {
     const { grade: gradeParam, subject } = readNav();
-    const grade = gradeOptions.find((option) => String(option.grade) === gradeParam)?.grade ?? null;
+    const grade = data.grades.find((option) => String(option.grade) === gradeParam)?.grade ?? null;
     const area =
       grade == null
         ? undefined
-        : subjectAreasByGrade[grade]?.find((option) => option.id === subject && option.available);
+        : subjectStepFor(data, grade)?.find((option) => option.subject === subject && option.available !== false);
     selectedGrade = grade;
-    selectedArea = area?.id ?? null;
+    selectedArea = area?.subject ?? null;
   };
 
   /** The home screen never has a deck open, so mode and unit are always blank here. */
@@ -69,13 +74,13 @@
     window.removeEventListener("popstate", readNavFromUrl);
   });
 
-  const chooseGrade = (grade: GradeLevel) => {
+  const chooseGrade = (grade: number) => {
     selectedGrade = grade;
     selectedArea = null;
     writeNavToUrl("push");
   };
 
-  const chooseArea = (area: SubjectArea) => {
+  const chooseArea = (area: string) => {
     selectedArea = area;
     writeNavToUrl("push");
   };
@@ -103,29 +108,27 @@
   <header class="home__brand">
     <span class="home__logo" aria-hidden="true">✦</span>
     <h1 class="home__title">Flash Cards</h1>
-    <p class="home__tagline">Practice that fits your grade</p>
+    <p class="home__tagline">{data.home.tagline}</p>
   </header>
 
   {#if selectedGrade == null}
     <div class="home__intro">
-      <p class="home__lead">
-        Short practice rounds for reading, math, science, and French. Pick a grade, choose a topic, and work through shuffled cards at your own pace.
-      </p>
+      <p class="home__lead">{data.home.intro}</p>
     </div>
 
     <div class="home-grades">
-      {#each gradeOptions as option (option.grade)}
+      {#each data.grades as option (option)}
         <button
           type="button"
-          class="home-grade home-grade--g{option.grade}"
+          class="home-grade home-grade--{option.color}"
           on:click={() => chooseGrade(option.grade)}
         >
           <span class="home-grade__badge">Grade {option.grade}</span>
           <span class="home-grade__title">{option.label}</span>
           <span class="home-grade__subjects">
-            {#each option.subjects as subject (subject.label)}
-              <span class="home-grade__subject home-grade__subject--{colorClassFor(subject.subject)}">
-                <strong>{subject.label}:</strong>
+            {#each option.subjects as subject (subject)}
+              <span class="home-grade__subject home-grade__subject--{colorFor(data, subject.subject)}">
+                <strong>{subjectLabelFor(data, subject.subject)}:</strong>
                 {subject.summary}
               </span>
             {/each}
@@ -140,48 +143,51 @@
       </button>
       <h2 class="home__subject-title">{headingTitle}</h2>
       <p class="home__hint">
-        {#if selectedGrade === 4}
-          Start with typing or the microphone. Cards shuffle every round.
-        {:else if areas && selectedArea == null}
+        {#if areas && selectedArea == null}
           Pick a subject.
+        {:else if hasTypingDecks}
+          Start with typing or the microphone. Cards shuffle every round.
         {:else}
-          Multiple choice — Practice at your own pace, or Timed with 20 seconds per question.
+          Multiple choice — Practice at your own pace, or Timed with {data.multipleChoice.secondsPerQuestion} seconds per
+          question.
         {/if}
       </p>
     </div>
 
     {#if areas && selectedArea == null}
       <div class="home-grades">
-        {#each areas as area (area.id)}
+        {#each areas as area (area.subject)}
           <button
             type="button"
-            class="home-grade home-grade--{colorClassFor(area.id)}"
-            disabled={!area.available}
-            on:click={() => chooseArea(area.id)}
+            class="home-grade home-grade--{colorFor(data, area.subject)}"
+            disabled={area.available === false}
+            on:click={() => chooseArea(area.subject)}
           >
-            <span class="home-grade__badge">{area.available ? gradeLabel : "Coming soon"}</span>
-            <span class="home-grade__title">{area.label}</span>
-            <span class="home-grade__blurb">{area.blurb}</span>
+            <span class="home-grade__badge">{area.available === false ? "Coming soon" : gradeLabel}</span>
+            <span class="home-grade__title">{subjectLabelFor(data, area.subject)}</span>
+            <span class="home-grade__blurb">{area.blurb ?? area.summary}</span>
           </button>
         {/each}
       </div>
-    {:else if selectedGrade === 6 && selectedArea != null}
+    {:else if units}
       <div class="home-topics" role="list">
-        {#each unitsBySubjectArea[selectedArea] as unit (unit.unit)}
-          {@const option = unit.deckId ? getDeckOptionById(unit.deckId) : null}
+        {#each units as unit (unit.label)}
+          {@const option = unit.option}
           <article
-            class="home-topic home-topic--{colorClassFor(selectedArea)}"
+            class="home-topic home-topic--{colorFor(data, String(selectedArea))}"
             class:home-topic--disabled={!option}
             role="listitem"
           >
             <div class="home-topic__top">
               <span class="home-topic__badge">
-                {selectedAreaLabel} · {unit.label ?? `Unit ${unit.unit}`}{option ? "" : " · Coming soon"}
+                {selectedAreaLabel} · {unit.label}{option ? "" : " · Coming soon"}
               </span>
-              <h2 class="home-topic__title">{unit.label ?? `Unit ${unit.unit}`}: {unit.title}</h2>
+              <h2 class="home-topic__title">{unit.label}: {unit.title}</h2>
             </div>
             <p class="home-topic__desc">
-              {option ? option.description : "Practice for this unit will be added once the details are ready."}
+              {option
+                ? deckDescription(option, data.cards)
+                : "Practice for this unit will be added once the details are ready."}
             </p>
             <div class="home-topic__actions">
               <button
@@ -207,16 +213,16 @@
       </div>
     {:else}
     <div class="home-topics" role="list">
-      {#each subjects as option (option.id)}
+      {#each subjects as option (option)}
         <article
-          class="home-topic home-topic--{colorClassFor(option.subject)}"
+          class="home-topic home-topic--{colorFor(data, option.subject)}"
           role="listitem"
         >
           <div class="home-topic__top">
             <span class="home-topic__badge">{option.badge}</span>
             <h2 class="home-topic__title">{option.title}</h2>
           </div>
-          <p class="home-topic__desc">{option.description}</p>
+          <p class="home-topic__desc">{deckDescription(option, data.cards)}</p>
           <div class="home-topic__actions">
             {#if option.interaction === "multiple-choice"}
               <button
@@ -432,63 +438,63 @@
     font-weight: 800;
   }
 
-  /* Grade colors: 2nd sky, 3rd violet, 4th teal, 5th rose, 6th orange. */
-  .home-grade--g2 {
+  /* Grade colors (see grades in data/flashcards.json); grades can also use any subject color. */
+  .home-grade--sky {
     background: linear-gradient(160deg, rgba(224, 242, 254, 0.9) 0%, #fff 55%);
     border-color: rgba(2, 132, 199, 0.2);
   }
 
-  .home-grade--g2:hover:not(:disabled) {
+  .home-grade--sky:hover:not(:disabled) {
     border-color: rgba(2, 132, 199, 0.45);
   }
 
-  .home-grade--g2 .home-grade__badge {
+  .home-grade--sky .home-grade__badge {
     background: rgba(2, 132, 199, 0.12);
     color: #0369a1;
   }
 
-  .home-grade--g3 {
+  .home-grade--violet {
     background: linear-gradient(160deg, rgba(237, 233, 254, 0.9) 0%, #fff 55%);
     border-color: rgba(124, 58, 237, 0.2);
   }
 
-  .home-grade--g3:hover:not(:disabled) {
+  .home-grade--violet:hover:not(:disabled) {
     border-color: rgba(124, 58, 237, 0.45);
   }
 
-  .home-grade--g3 .home-grade__badge {
+  .home-grade--violet .home-grade__badge {
     background: rgba(124, 58, 237, 0.12);
     color: #6d28d9;
   }
 
-  .home-grade--g4 {
+  .home-grade--teal {
     border-color: rgba(13, 148, 136, 0.2);
   }
 
-  .home-grade--g5 {
+  .home-grade--rose {
     background: linear-gradient(160deg, rgba(255, 228, 230, 0.9) 0%, #fff 55%);
     border-color: rgba(225, 29, 72, 0.2);
   }
 
-  .home-grade--g5:hover:not(:disabled) {
+  .home-grade--rose:hover:not(:disabled) {
     border-color: rgba(225, 29, 72, 0.45);
   }
 
-  .home-grade--g5 .home-grade__badge {
+  .home-grade--rose .home-grade__badge {
     background: rgba(225, 29, 72, 0.1);
     color: #be123c;
   }
 
-  .home-grade--g6 {
+  .home-grade--amber {
     background: linear-gradient(160deg, rgba(255, 247, 237, 0.85) 0%, #fff 55%);
     border-color: rgba(234, 88, 12, 0.18);
   }
 
-  .home-grade--g6:hover:not(:disabled) {
+  .home-grade--amber:hover:not(:disabled) {
     border-color: rgba(234, 88, 12, 0.4);
   }
 
-  .home-grade--g6 .home-grade__badge {
+  .home-grade--amber .home-grade__badge {
     background: var(--fc-accent-soft);
     color: #c2410c;
   }
@@ -511,7 +517,7 @@
     gap: var(--fc-space-md);
   }
 
-  /* Subject colors (see subjectColors in data/decks.ts). */
+  /* Subject colors (see subjects in data/flashcards.json). */
   .home-grade--red,
   .home-topic--red {
     background: linear-gradient(160deg, rgba(254, 226, 226, 0.9) 0%, #fff 55%);

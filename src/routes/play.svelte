@@ -1,21 +1,24 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from "svelte";
   import FlashCard from "../components/FlashCard.svelte";
-  import type { Card, SubjectDeck } from "../data/CardTypes";
+  import type { Card, PlayText, SubjectDeck, TypingAndVoiceSettings } from "../data/CardTypes";
   import { AnswerInterpreter, type AnswerInterpretation } from "../nlp/AnswerInterpreter";
   import { SpeechRecognizer } from "../nlp/SpeechRecognizer";
 
   export let deck: SubjectDeck;
   export let autoMic = false;
+  export let settings: TypingAndVoiceSettings;
+  export let text: PlayText;
   const dispatch = createEventDispatcher<{ back: void }>();
 
-  const ENCOURAGEMENT_MESSAGES = ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super reading!"];
-  const ENCOURAGEMENT_BREAK_MS = 2800;
+  // Settings and wording are fixed for this screen, like the deck.
+  const { encouragement, cardsBeforeBreak } = settings;
+  const { title, typingCue, promptName, finishedTitle, typingFinished } = text;
+  const ENCOURAGEMENT_BREAK_MS = settings.breakSeconds * 1000;
   /** Delay before starting recognition again after a break (fresh AudioPipeline). */
   const POST_BREAK_MIC_MS = 1100;
   /** After mic `onstart` post-break, hide the word and ignore scoring briefly so the first real answer isn't eaten. */
   const POST_BREAK_PROMPT_AND_SCORE_MS = 550;
-  const CARDS_BEFORE_ENCOURAGEMENT_BREAK = 5;
 
   type TranscriptEntry = {
     cardPrompt: string;
@@ -100,17 +103,6 @@
     return { tone: "bad", title: "Not quite.", detail: `Accepted: ${result.normalizedAnswers.join(", ")}` };
   }
 
-  const playTitle =
-    deck.subject === "sight-words"
-      ? "Sight words"
-      : deck.subject === "math" && deck.operation === "decimal-operations"
-        ? "Decimal Operations"
-        : deck.subject === "math"
-          ? "Math facts"
-          : deck.subject === "vocabulary"
-            ? "Vocabulary"
-            : "Practice";
-
   const playSubtitle =
     deck.subject === "sight-words"
       ? `Grade ${deck.grade}`
@@ -121,9 +113,6 @@
           : deck.subject === "vocabulary"
             ? deck.topic
             : "";
-
-  const promptThing = deck.subject === "math" ? "problem" : "word";
-  const flashCue = deck.subject === "math" ? "Solve this" : "Say this word";
 
   /** Typing mode: always show. Mic mode: show only when safe so kids don't speak before capture is ready. */
   $: showPromptCard =
@@ -192,7 +181,7 @@
 
   const triggerEncouragementBreak = () => {
     sessionPaused = false;
-    encouragementMessage = ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)];
+    encouragementMessage = encouragement[Math.floor(Math.random() * encouragement.length)];
     liveTranscript = "";
     liveCandidates = [];
     speechError = "";
@@ -219,7 +208,7 @@
     goToNextCard();
 
     if (
-      cardsCompletedSinceBreak >= CARDS_BEFORE_ENCOURAGEMENT_BREAK &&
+      cardsCompletedSinceBreak >= cardsBeforeBreak &&
       currentCardIndex < shuffledCards.length
     ) {
       triggerEncouragementBreak();
@@ -437,7 +426,7 @@
       ← Home
     </button>
     <div class="fc-play__titles">
-      <h2 class="fc-play__title">{playTitle}</h2>
+      <h2 class="fc-play__title">{title}</h2>
       <p class="fc-play__subtitle">{playSubtitle}</p>
     </div>
     {#if sessionPaused && currentCard && !encouragementBreak}
@@ -488,13 +477,13 @@
       </p>
     </div>
     {#if showPromptCard}
-      <FlashCard prompt={currentCard.prompt} cue={flashCue} />
+      <FlashCard prompt={currentCard.prompt} cue={typingCue} />
     {:else if autoMic && !encouragementBreak}
       <div class="fc-warmup fc-surface">
         <div class="fc-warmup__pulse" aria-hidden="true"></div>
         <p class="fc-warmup__title">Getting microphone ready</p>
         <p class="fc-muted">
-          The {promptThing} will pop up when listening is on — hang tight!
+          The {promptName} will pop up when listening is on — hang tight!
         </p>
       </div>
     {/if}
@@ -552,7 +541,7 @@
         </p>
         {#if postBreakMicCooldown}
           <p class="fc-hint fc-hint--accent">
-            Starting microphone… wait until the {promptThing} appears.
+            Starting microphone… wait until the {promptName} appears.
           </p>
         {/if}
       {/if}
@@ -629,8 +618,8 @@
   {:else}
     <div class="fc-complete fc-surface">
       <div class="fc-complete__icon" aria-hidden="true">★</div>
-      <h3 class="fc-complete__title">You finished the deck!</h3>
-      <p class="fc-muted">Amazing reading practice. Want another round? Head home and start again.</p>
+      <h3 class="fc-complete__title">{finishedTitle}</h3>
+      <p class="fc-muted">{typingFinished}</p>
       <button type="button" class="fc-btn fc-btn--primary fc-complete__btn" on:click={() => dispatch("back")}>
         Back to home
       </button>

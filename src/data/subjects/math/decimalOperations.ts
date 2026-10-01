@@ -1,8 +1,10 @@
-import type { Card, MathDeck } from "../../CardTypes";
+import type { Card, DeckInfo, MathDeck } from "../../CardTypes";
+import { chance, pick, randomInt, shuffle, type NumberRange } from "./rules";
 
 type Op = "add" | "sub" | "mul" | "div";
 
-type UnitKind = "none" | "money" | "inches" | "miles" | "pounds" | "liters";
+/** "none", "money" (shown as dollars), or a word written after the number, like "inches". */
+type UnitKind = string;
 
 interface ProblemSpec {
   a: number;
@@ -11,31 +13,27 @@ interface ProblemSpec {
   unit: UnitKind;
 }
 
-export const DECK_SIZE = 50;
-export const ROUND_SIZE = 10;
-export const TOTAL_ROUNDS = DECK_SIZE / ROUND_SIZE;
-
-const OPS: Op[] = ["add", "sub", "mul", "div"];
-const UNIT_CHOICES: Exclude<UnitKind, "none">[] = [
-  "money",
-  "inches",
-  "miles",
-  "pounds",
-  "liters"
-];
-
-const UNIT_SUFFIX: Record<Exclude<UnitKind, "none" | "money">, string> = {
-  inches: "inches",
-  miles: "miles",
-  pounds: "pounds",
-  liters: "liters"
-};
-
-const pick = <T>(items: readonly T[]): T =>
-  items[Math.floor(Math.random() * items.length)] as T;
-
-const randomInt = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
+export interface DecimalOperationsRules {
+  deckSize: number;
+  operations: Op[];
+  /** Problems whose answer falls outside this are thrown out (an answer of 0 is allowed). */
+  answer: NumberRange;
+  wrongAnswerMax: number;
+  /** Chance an addition or subtraction problem gets a unit. */
+  unitChance: number;
+  units: string[];
+  /** Chance both numbers are decimals; otherwise one is, picked by decimalFirstChance. */
+  bothDecimalChance: number;
+  decimalFirstChance: number;
+  /** Chance the number that isn't required to be a decimal is one anyway. */
+  decimalChance: number;
+  /** Chance a decimal has two places instead of one (money always has two). */
+  twoPlacesChance: number;
+  /** Largest whole-number part of each number, by operation, plus overrides for divisors and money. */
+  maxWhole: Record<Op, number> & { divisor: number; money: number; quotient: number };
+  /** Chance a division problem is built from divisor × a small quotient, so it comes out clean. */
+  cleanQuotientChance: number;
+}
 
 const roundNice = (value: number): number => {
   const abs = Math.abs(value);
@@ -77,7 +75,7 @@ const formatValue = (value: number, unit: UnitKind): string => {
   if (unit === "none") {
     return n;
   }
-  return `${n} ${UNIT_SUFFIX[unit]}`;
+  return `${n} ${unit}`;
 };
 
 const compute = (a: number, b: number, op: Op): number => {
@@ -113,15 +111,6 @@ const buildPrompt = (spec: ProblemSpec): string => {
   return `${formatValue(spec.a, spec.unit)} ${opSymbol(spec.op)} ${formatValue(spec.b, spec.unit)}`;
 };
 
-const shuffle = <T>(items: T[]): T[] => {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
-  }
-  return next;
-};
-
 const roundTo = (value: number, places: number): number => {
   const scale = 10 ** places;
   return Math.round(value * scale) / scale;
@@ -153,8 +142,8 @@ const slightlyOffDistractors = (correct: number): Distractor[] => {
 const decimalShiftDistractors = (correct: number): Distractor[] =>
   [correct * 10, correct / 10].map((value) => ({ kind: "decimal-shift" as const, value }));
 
-const wrongOperationDistractors = (spec: ProblemSpec): Distractor[] =>
-  OPS.filter((candidate) => candidate !== spec.op).map((candidate) => ({
+const wrongOperationDistractors = (spec: ProblemSpec, ops: Op[]): Distractor[] =>
+  ops.filter((candidate) => candidate !== spec.op).map((candidate) => ({
     kind: "wrong-operation" as const,
     value: compute(spec.a, spec.b, candidate)
   }));
@@ -211,7 +200,7 @@ const partialProductDistractors = (spec: ProblemSpec): Distractor[] => {
 const reversedDivisionDistractors = (spec: ProblemSpec): Distractor[] =>
   spec.op === "div" ? [{ kind: "reversed-division", value: spec.b / spec.a }] : [];
 
-const buildChoices = (spec: ProblemSpec, correct: number): string[] => {
+const buildChoices = (spec: ProblemSpec, correct: number, rules: DecimalOperationsRules): string[] => {
   const unit = answerUnit(spec);
   const correctText = formatValue(correct, unit);
   const used = new Set<string>([correctText]);
@@ -219,7 +208,7 @@ const buildChoices = (spec: ProblemSpec, correct: number): string[] => {
 
   const isUsable = (value: number): boolean => {
     const rounded = roundNice(value);
-    if (!Number.isFinite(rounded) || rounded <= 0 || rounded > 1000) {
+    if (!Number.isFinite(rounded) || rounded <= 0 || rounded > rules.wrongAnswerMax) {
       return false;
     }
     return !used.has(formatValue(rounded, unit));
@@ -239,7 +228,7 @@ const buildChoices = (spec: ProblemSpec, correct: number): string[] => {
   const byKind = new Map<DistractorKind, Distractor[]>();
   for (const distractor of [
     ...decimalShiftDistractors(correct),
-    ...wrongOperationDistractors(spec),
+    ...wrongOperationDistractors(spec, rules.operations),
     ...misalignedDecimalDistractors(spec),
     ...noCarryOrBorrowDistractors(spec),
     ...partialProductDistractors(spec),
@@ -378,50 +367,54 @@ const randomDecimal = (maxWhole: number, places: 1 | 2): number => {
   return roundNice(value);
 };
 
-const randomWhole = (min: number, max: number): number => randomInt(min, max);
-
-const randomOperand = (options: { mustBeDecimal: boolean; money: boolean; maxWhole: number }): number => {
-  if (options.mustBeDecimal || Math.random() < 0.55) {
-    const places: 1 | 2 = options.money || Math.random() < 0.35 ? 2 : 1;
+const randomOperand = (
+  options: { mustBeDecimal: boolean; money: boolean; maxWhole: number },
+  rules: DecimalOperationsRules
+): number => {
+  if (options.mustBeDecimal || chance(rules.decimalChance)) {
+    const places: 1 | 2 = options.money || chance(rules.twoPlacesChance) ? 2 : 1;
     return randomDecimal(options.maxWhole, places);
   }
-  return randomWhole(1, Math.max(1, options.maxWhole));
+  return randomInt(1, Math.max(1, options.maxWhole));
 };
 
 /** Also rejects NaN and Infinity, since neither passes the range check. */
-const isReasonableAnswer = (value: number): boolean => {
+const isReasonableAnswer = (value: number, rules: DecimalOperationsRules): boolean => {
   const abs = Math.abs(value);
-  return abs <= 100 && (abs >= 0.01 || abs === 0);
+  return abs <= rules.answer.max && (abs >= rules.answer.min || abs === 0);
 };
 
-const chooseUnit = (op: Op): UnitKind => {
+const chooseUnit = (op: Op, rules: DecimalOperationsRules): UnitKind => {
   // Units only appear on add/sub prompts; mul/div drop them.
   if (op !== "add" && op !== "sub") {
     return "none";
   }
-  return Math.random() < 0.5 ? "none" : pick(UNIT_CHOICES);
+  return chance(rules.unitChance) ? pick(rules.units) : "none";
 };
 
-const generateProblem = (): ProblemSpec => {
+const generateProblem = (rules: DecimalOperationsRules): ProblemSpec => {
+  const { maxWhole } = rules;
   for (let attempt = 0; attempt < 50; attempt += 1) {
-    const op = pick(OPS);
-    const unit = chooseUnit(op);
+    const op = pick(rules.operations);
+    const unit = chooseUnit(op, rules);
     const money = unit === "money";
 
     // At least one operand is always a decimal, since randomDecimal never returns a whole number.
-    const bothDecimal = Math.random() < 0.4;
-    const decimalOnA = bothDecimal || Math.random() < 0.5;
+    const bothDecimal = chance(rules.bothDecimalChance);
+    const decimalOnA = bothDecimal || chance(rules.decimalFirstChance);
 
-    let a = randomOperand({
-      mustBeDecimal: decimalOnA,
-      money,
-      maxWhole: op === "mul" ? 6 : money ? 12 : 9
-    });
-    let b = randomOperand({
-      mustBeDecimal: bothDecimal || !decimalOnA,
-      money,
-      maxWhole: op === "mul" ? 6 : op === "div" ? 8 : money ? 12 : 9
-    });
+    let a = randomOperand(
+      { mustBeDecimal: decimalOnA, money, maxWhole: money ? maxWhole.money : maxWhole[op] },
+      rules
+    );
+    let b = randomOperand(
+      {
+        mustBeDecimal: bothDecimal || !decimalOnA,
+        money,
+        maxWhole: op === "div" ? maxWhole.divisor : money ? maxWhole.money : maxWhole[op]
+      },
+      rules
+    );
 
     if (op === "sub" && a < b) {
       [a, b] = [b, a];
@@ -429,12 +422,11 @@ const generateProblem = (): ProblemSpec => {
 
     if (op === "div") {
       // Prefer cleaner quotients: rebuild dividend from divisor × small quotient.
-      if (Math.random() < 0.65) {
-        const quotient = randomOperand({
-          mustBeDecimal: decimalPlaces(b) === 0,
-          money: false,
-          maxWhole: 8
-        });
+      if (chance(rules.cleanQuotientChance)) {
+        const quotient = randomOperand(
+          { mustBeDecimal: decimalPlaces(b) === 0, money: false, maxWhole: maxWhole.quotient },
+          rules
+        );
         a = roundNice(b * quotient);
         if (decimalPlaces(a) === 0 && decimalPlaces(b) === 0) {
           b = randomDecimal(5, 1);
@@ -444,7 +436,7 @@ const generateProblem = (): ProblemSpec => {
     }
 
     const correct = roundNice(compute(a, b, op));
-    if (!isReasonableAnswer(correct) || (decimalPlaces(a) === 0 && decimalPlaces(b) === 0)) {
+    if (!isReasonableAnswer(correct, rules) || (decimalPlaces(a) === 0 && decimalPlaces(b) === 0)) {
       continue;
     }
 
@@ -455,7 +447,7 @@ const generateProblem = (): ProblemSpec => {
   return { a: 2.5, b: 1.75, op: "add", unit: "none" };
 };
 
-const toCard = (spec: ProblemSpec): Card => {
+const toCard = (spec: ProblemSpec, rules: DecimalOperationsRules): Card => {
   if (decimalPlaces(spec.a) === 0 && decimalPlaces(spec.b) === 0) {
     throw new Error(
       `Decimal deck problem must include a decimal operand: ${spec.a} ${spec.op} ${spec.b}`
@@ -467,7 +459,7 @@ const toCard = (spec: ProblemSpec): Card => {
   return {
     prompt: buildPrompt(spec),
     answers: [answer, stripTrailingZeros(correct)],
-    choices: buildChoices(spec, correct),
+    choices: buildChoices(spec, correct, rules),
     hint: buildHint(spec)
   };
 };
@@ -475,16 +467,11 @@ const toCard = (spec: ProblemSpec): Card => {
 /** Internals exposed only so tests can reach safety nets that random decks almost never hit. */
 export const __testing = { formatValue, buildChoices, buildHint, toCard };
 
-export const createDecimalOperationsDeck = (): MathDeck => {
-  const cards: Card[] = [];
-  for (let i = 0; i < DECK_SIZE; i += 1) {
-    cards.push(toCard(generateProblem()));
-  }
-  return {
-    subject: "math",
-    operation: "decimal-operations",
-    grade: 6,
-    unitLabel: "Unit 1",
-    cards
-  };
-};
+export const createDecimalOperationsDeck = (rules: DecimalOperationsRules, info: DeckInfo): MathDeck => ({
+  subject: "math",
+  operation: "decimal-operations",
+  grade: info.grade,
+  unitLabel: info.unitLabel,
+  cards: Array.from({ length: rules.deckSize }, () => toCard(generateProblem(rules), rules))
+});
+

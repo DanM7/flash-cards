@@ -2,21 +2,20 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import CountryMap from "../../components/CountryMap.svelte";
   import FlashCard from "../../components/FlashCard.svelte";
-  import type { Card, SubjectDeck } from "../../data/CardTypes";
-  import { ROUND_SIZE } from "../../data/subjects/math/decimalOperations";
+  import type { Card, MultipleChoiceSettings, PlayText, SubjectDeck } from "../../data/CardTypes";
 
   export let deck: SubjectDeck;
   export let timed = false;
+  export let settings: MultipleChoiceSettings;
+  export let text: PlayText;
   const dispatch = createEventDispatcher<{ back: void }>();
 
-  const ENCOURAGEMENT_MESSAGES = ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super!"];
-  const POINTS_FIRST_TRY = 10;
-  const POINTS_PER_WRONG = 3;
-  const POINTS_HINT = 1;
-  const POINTS_MIN = 1;
-  const TIME_LIMIT_MS = 20_000;
+  // Settings and wording are fixed for this screen, like the deck.
+  const { encouragement, scoring } = settings;
+  const { title, choiceCue, finishedTitle, choiceFinished } = text;
+  const TIME_LIMIT_MS = settings.secondsPerQuestion * 1000;
   const TIMER_TICK_MS = 100;
-  const TIME_LOW_MS = 5_000;
+  const TIME_LOW_MS = settings.lowTimeSeconds * 1000;
   const CHOICE_LETTERS = ["A", "B", "C", "D", "E", "F"];
 
   let currentCardIndex = 0;
@@ -74,10 +73,7 @@
   };
 
   const pointsForCard = (wrongs: number, hintUsed: boolean): number =>
-    Math.max(
-      POINTS_MIN,
-      POINTS_FIRST_TRY - wrongs * POINTS_PER_WRONG - (hintUsed ? POINTS_HINT : 0)
-    );
+    Math.max(scoring.minimum, scoring.firstTry - wrongs * scoring.perWrongPick - (hintUsed ? scoring.hint : 0));
 
   const isCorrectChoice = (choice: string, card: Card): boolean => {
     const normalized = choice.trim().toLowerCase();
@@ -139,7 +135,7 @@
 
   $: currentCard = shuffledCards[currentCardIndex] as Card | undefined;
 
-  $: roundSize = Math.max(1, Math.min(ROUND_SIZE, shuffledCards.length));
+  $: roundSize = Math.max(1, Math.min(settings.roundSize, shuffledCards.length));
   $: totalRounds = Math.max(1, Math.ceil(shuffledCards.length / roundSize));
 
   $: currentRound =
@@ -181,20 +177,6 @@
     picked === choice || (revealed && isCorrectChoice(choice, card));
 
   const isMath = deck.subject === "math";
-  const isDecimal = deck.subject === "math" && deck.operation === "decimal-operations";
-
-  const playTitle =
-    deck.subject === "math" && deck.operation === "decimal-operations"
-      ? "Decimal Operations"
-      : deck.subject === "math"
-        ? "Math facts"
-        : deck.subject === "science"
-          ? "Science"
-          : deck.subject === "french"
-            ? "French"
-            : deck.subject === "geography"
-              ? "Geography"
-              : "Practice";
 
   const playSubtitleBase =
     (deck.subject === "math" ||
@@ -221,7 +203,7 @@
   };
 
   const triggerEncouragementBreak = (roundJustFinished: number) => {
-    encouragementMessage = ENCOURAGEMENT_MESSAGES[Math.floor(Math.random() * ENCOURAGEMENT_MESSAGES.length)];
+    encouragementMessage = encouragement[Math.floor(Math.random() * encouragement.length)];
     completedRoundNumber = roundJustFinished;
     encouragementBreak = true;
   };
@@ -231,7 +213,7 @@
     startTimer();
   };
 
-  /** Advance one card; pause between rounds (every 10 cards) when more remain. */
+  /** Advance one card; pause between rounds when more remain. */
   const advanceAfterCard = (delayMs = 0) => {
     const finishedRoundBoundary =
       (currentCardIndex + 1) % roundSize === 0 && currentCardIndex + 1 < shuffledCards.length;
@@ -253,7 +235,7 @@
 
   const afterCorrect = (points: number) => {
     score += points;
-    potential += POINTS_FIRST_TRY;
+    potential += scoring.firstTry;
     advanceAfterCard(650);
   };
 
@@ -277,7 +259,7 @@
       return;
     }
     stopTimer();
-    potential += POINTS_FIRST_TRY;
+    potential += scoring.firstTry;
     advanceAfterCard();
   };
 
@@ -300,7 +282,7 @@
     timedOut = true;
     locked = true;
     hintOpen = false;
-    potential += POINTS_FIRST_TRY;
+    potential += scoring.firstTry;
   }
 
   const toggleHint = () => {
@@ -322,7 +304,7 @@
       ← Home
     </button>
     <div class="fc-play__titles">
-      <h2 class="fc-play__title">{playTitle}</h2>
+      <h2 class="fc-play__title">{title}</h2>
       <p class="fc-play__subtitle">{playSubtitle}</p>
     </div>
   </header>
@@ -368,11 +350,15 @@
             <!-- Stays laid out (just hidden) while paused so the PAUSED card matches its size. -->
             <div class="fc-play__question" class:fc-play__question--hidden={paused} aria-hidden={paused}>
               {#if currentCard.map}
-                <CountryMap countryId={currentCard.map.countryId} cue={currentCard.prompt} />
+                <CountryMap
+                  countryId={currentCard.map.countryId}
+                  continent={currentCard.map.continent}
+                  cue={currentCard.prompt}
+                />
               {:else}
                 <FlashCard
                   prompt={currentCard.prompt}
-                  cue={isMath ? "Solve this" : "Answer this"}
+                  cue={choiceCue}
                   compact={!isMath}
                 />
               {/if}
@@ -472,13 +458,10 @@
   {:else}
     <div class="fc-complete fc-surface">
       <div class="fc-complete__icon" aria-hidden="true">★</div>
-      <h3 class="fc-complete__title">You finished the deck!</h3>
+      <h3 class="fc-complete__title">{finishedTitle}</h3>
       <p class="fc-complete__score">Score: {score}</p>
       <p class="fc-complete__percentage">Percentage: {percentageDisplay}</p>
-      <p class="fc-muted">
-        {isDecimal ? "Solid decimal practice." : isMath ? "Great math practice." : "Nice studying."}
-        Head home when you want another round.
-      </p>
+      <p class="fc-muted">{choiceFinished}</p>
       <button type="button" class="fc-btn fc-btn--primary fc-complete__btn" on:click={() => dispatch("back")}>
         Back to home
       </button>

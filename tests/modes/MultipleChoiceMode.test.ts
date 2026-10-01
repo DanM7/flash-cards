@@ -1,8 +1,10 @@
 import { fireEvent, render, screen } from "@testing-library/svelte";
 import { tick } from "svelte";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Card, SubjectDeck } from "../../src/data/CardTypes";
+import type { Card, MultipleChoiceSettings, SubjectDeck } from "../../src/data/CardTypes";
+import { playTextFor } from "../../src/data/decks";
 import MultipleChoiceMode from "../../src/modes/multiple-choice/MultipleChoiceMode.svelte";
+import { flashcardData } from "../helpers/flashcards";
 
 const makeCards = (count: number, extra: Partial<Card> = {}): Card[] =>
   Array.from({ length: count }, (_, i) => ({
@@ -19,8 +21,9 @@ const mathDeck = (count: number, extra: Partial<Card> = {}): SubjectDeck => ({
   cards: makeCards(count, extra)
 });
 
-const renderMode = (deck: SubjectDeck, timed = false) => {
-  const result = render(MultipleChoiceMode, { deck, timed });
+const renderMode = (deck: SubjectDeck, timed = false, changes: Partial<MultipleChoiceSettings> = {}) => {
+  const settings = { ...flashcardData.multipleChoice, ...changes };
+  const result = render(MultipleChoiceMode, { deck, timed, settings, text: playTextFor(flashcardData, deck) });
   const onBack = vi.fn();
   result.component.$on("back", onBack);
   return { ...result, onBack };
@@ -105,6 +108,27 @@ describe("MultipleChoiceMode", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
     await fireEvent.click(screen.getByRole("button", { name: "← Home" }));
     expect(onBack).toHaveBeenCalledTimes(2);
+  });
+
+  it("follows the scoring, round size, and encouragement it's given", async () => {
+    renderMode(mathDeck(3, { hint: "Think about it." }), false, {
+      roundSize: 2,
+      scoring: { firstTry: 5, perWrongPick: 2, hint: 1, minimum: 2 },
+      encouragement: ["Keep going!"]
+    });
+    await begin();
+    expect(progress()).toBe("Round 1 of 2 · Card 1 of 2 · Score: 0 · Percentage: —");
+    await fireEvent.click(choice("B"));
+    await answerRight();
+    expect(progress()).toContain("Score: 3");
+
+    await fireEvent.click(screen.getByRole("button", { name: "Hint" }));
+    await fireEvent.click(choice("B"));
+    await fireEvent.click(choice("C"));
+    await answerRight();
+    // 5 − 2 × 2 − 1 is 0, so the minimum of 2 applies.
+    expect(screen.getByText("Keep going!")).toBeInTheDocument();
+    expect(screen.getByText("Round 1 of 2 done · Score: 5 · Percentage: 50%")).toBeInTheDocument();
   });
 
   it("keeps wrong picks red, and takes points off for misses and hints", async () => {
@@ -209,6 +233,21 @@ describe("MultipleChoiceMode", () => {
       await answerRight();
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
       expect(screen.getByText("Percentage: 50%")).toBeInTheDocument();
+    });
+
+    it("uses the time limit and low-time warning it's given", async () => {
+      renderMode(mathDeck(1), true, { secondsPerQuestion: 8, lowTimeSeconds: 3 });
+      expect(timerText()).toBe("8s");
+      await begin();
+      await wait(4_000);
+      expect(timerText()).toBe("4s");
+      expect(screen.getByRole("timer")).not.toHaveClass("fc-timer--low");
+      await wait(1_000);
+      expect(screen.getByRole("timer")).toHaveClass("fc-timer--low");
+      await wait(2_000);
+      await wait(5_000);
+      expect(timerText()).toBe("0s");
+      expect(choice("A")).toHaveClass("fc-choice--correct");
     });
 
     it("pauses the clock and covers the question until resumed", async () => {
@@ -327,7 +366,8 @@ describe("MultipleChoiceMode", () => {
     [{ subject: "math", operation: "addition", cards: [] }, "Math facts", "Multiple choice · Practice", "Great math practice."],
     [{ subject: "science", grade: 6, unitLabel: "Unit 2: Human Body", cards: [] }, "Science", "Unit 2: Human Body · Practice", "Nice studying."],
     [{ subject: "french", grade: 6, unitLabel: "", cards: [] }, "French", "Multiple choice · Practice", "Nice studying."],
-    [{ subject: "sight-words", grade: 4, cards: [] }, "Practice", "Multiple choice · Practice", "Nice studying."]
+    [{ subject: "sight-words", grade: 4, cards: [] }, "Sight words", "Multiple choice · Practice", "Nice studying."],
+    [{ subject: "custom", cards: [] }, "Practice", "Multiple choice · Practice", "Nice studying."]
   ] as [SubjectDeck, string, string, string][])("titles a %s deck and finishes an empty one", (deck, title, subtitle, closing) => {
     renderMode(deck);
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();

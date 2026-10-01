@@ -3,7 +3,8 @@ import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from
 import { feature, neighbors } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import worldData from "world-atlas/countries-50m.json";
-import { GEOGRAPHY_UNITS, type Continent } from "./countries";
+
+export type Continent = "north-america" | "south-america" | "europe" | "africa" | "asia" | "oceania";
 
 interface CountryProperties {
   name: string;
@@ -23,15 +24,26 @@ const EXTRA_PARTS: Record<string, string[]> = {
   "196": ["N. Cyprus"]
 };
 
-/** Share of the view the country's main landmass fills, so neighbors show around it. */
+const EARTH_RADIUS_KM = 6371;
+/** Share of the view the country fills, so neighbors show around it. */
 const CONTEXT_ZOOM = 0.45;
+/** A country's landmasses within this distance of its mainland (or of each other) are kept in view together. */
+const NEARBY_LAND_KM = 300;
+/** Landmasses at least this share of the mainland's size stay in view wherever they are (both halves of Malaysia). */
+const MAJOR_LAND_SHARE = 0.4;
+/**
+ * Widest map window (width ÷ height) the drawn area covers, so a short window shows more map rather than cropping
+ * it. The window is never taller than 3:2. Wider windows still show the whole country, with blank edges when
+ * zoomed out to the continent.
+ */
+const MAX_WINDOW_ASPECT = 3;
 /** Tiny countries still show at least this much of the globe... */
 const MIN_SPAN_DEGREES = 12;
 /** ...and enough to reach the nearest sizable landmass, up to this cap. */
 const MAX_SPAN_DEGREES = 60;
 const NEAREST_LAND_FACTOR = 2.2;
 /** Landmasses of at least ~10,000 km² (in steradians) count as recognizable context. */
-const SIZABLE_LAND_SR = 10_000 / 6371 ** 2;
+const SIZABLE_LAND_SR = 10_000 / EARTH_RADIUS_KM ** 2;
 /** Countries whose main landmass is smaller than this (in px) also get a circle so they can be spotted. */
 const MARKER_THRESHOLD_PX = 20;
 const MARKER_RADIUS_PX = 18;
@@ -58,9 +70,12 @@ export const sphericalArea = (coordinates: Position[][]): number => {
   return area > 2 * Math.PI ? 4 * Math.PI - area : area;
 };
 
-/** Main landmass, so far-off territories (French Guiana, Alaska) don't pull the zoom out. */
+const polygonsOf = (country: CountryFeature): Position[][][] =>
+  country.geometry.type === "Polygon" ? [country.geometry.coordinates] : country.geometry.coordinates;
+
+/** Main landmass, the anchor for centering and for deciding which of the country's other parts belong in view. */
 const largestPolygon = (country: CountryFeature): Feature<Polygon> => {
-  const polygons = country.geometry.type === "Polygon" ? [country.geometry.coordinates] : country.geometry.coordinates;
+  const polygons = polygonsOf(country);
   let best = polygons[0];
   let bestArea = -1;
   for (const coordinates of polygons) {
@@ -78,8 +93,45 @@ const centroids = mainlands.map((mainland) => geoCentroid(mainland));
 const mainlandAreas = mainlands.map((mainland) => sphericalArea(mainland.geometry.coordinates));
 
 const eachVertex = (country: CountryFeature, visit: (point: Position) => void) => {
-  const polygons = country.geometry.type === "Polygon" ? [country.geometry.coordinates] : country.geometry.coordinates;
-  polygons.forEach((rings) => rings.forEach((ring) => ring.forEach(visit)));
+  polygonsOf(country).forEach((rings) => rings.forEach((ring) => ring.forEach(visit)));
+};
+
+type Bounds = [[number, number], [number, number]];
+
+const boundsGap = ([[ax0, ay0], [ax1, ay1]]: Bounds, [[bx0, by0], [bx1, by1]]: Bounds): number =>
+  Math.hypot(Math.max(0, ax0 - bx1, bx0 - ax1), Math.max(0, ay0 - by1, by0 - ay1));
+
+/**
+ * The parts of a country that belong in view: its mainland, any landmass nearly as big, and everything within
+ * NEARBY_LAND_KM of those, island chains included. Far-off territories (French Guiana, Hawaii) are left out.
+ */
+const countryBody = (indexes: number[]): Feature<MultiPolygon> => {
+  const primary = indexes[0];
+  const [lon, lat] = centroids[primary];
+  const polygons = indexes.flatMap((index) => polygonsOf(features[index]));
+  // A unit-radius projection around the mainland, so gaps between bounds read as angles.
+  const unitPath = geoPath(
+    geoAzimuthalEqualArea().rotate([-lon, -lat]).clipAngle(90).precision(0).scale(1).translate([0, 0])
+  );
+  const bounds = polygons.map((coordinates) => unitPath.bounds({ type: "Polygon", coordinates }) as Bounds);
+  const majorArea = mainlandAreas[primary] * MAJOR_LAND_SHARE;
+  const kept = polygons.map((coordinates) => sphericalArea(coordinates) >= majorArea);
+  const maxGap = NEARBY_LAND_KM / EARTH_RADIUS_KM;
+  let grew = true;
+  while (grew) {
+    grew = false;
+    bounds.forEach((box, i) => {
+      if (!kept[i] && bounds.some((other, j) => kept[j] && boundsGap(box, other) <= maxGap)) {
+        kept[i] = true;
+        grew = true;
+      }
+    });
+  }
+  return {
+    type: "Feature",
+    properties: {},
+    geometry: { type: "MultiPolygon", coordinates: polygons.filter((_, i) => kept[i]) }
+  };
 };
 
 /** Bounding circle per country (center + angular radius) so off-screen shapes can be skipped quickly. */
@@ -140,9 +192,6 @@ const FRAME_STEP_DEGREES = 2.5;
 const FRAME_MAX_DISTANCE = (85 * Math.PI) / 180;
 const OVERVIEW_PADDING = 0.03;
 
-const continentOf = (id: string): Continent | undefined =>
-  GEOGRAPHY_UNITS.find((group) => group.countries.some((country) => country.id === id))?.continent;
-
 const framePoints = (continent: Continent): [number, number][] => {
   const { lon, lat } = CONTINENT_FRAMES[continent];
   const points: [number, number][] = [];
@@ -188,14 +237,23 @@ const fitAspect = (box: ViewBox, aspect: number): ViewBox => {
   };
 };
 
-/** Blank map centered on the country's main landmass, with the country's shapes kept separate for highlighting. */
-export const renderCountryMap = (id: string, width: number, height: number): CountryMapRender | null => {
+/**
+ * Blank map centered on the country's main landmass, with the country's shapes kept separate for highlighting.
+ * The overview takes in `continent` when one is given.
+ */
+export const renderCountryMap = (
+  id: string,
+  width: number,
+  height: number,
+  continent?: Continent
+): CountryMapRender | null => {
   const indexes = indexesById.get(id);
   if (!indexes) {
     return null;
   }
   const primary = indexes[0];
   const [lon, lat] = centroids[primary];
+  const body = countryBody(indexes);
   const projection = geoAzimuthalEqualArea()
     .rotate([-lon, -lat])
     .clipAngle(90)
@@ -206,7 +264,7 @@ export const renderCountryMap = (id: string, width: number, height: number): Cou
         [0, 0],
         [width, height]
       ],
-      mainlands[primary]
+      body
     );
 
   const spanDegrees = Math.min(
@@ -215,9 +273,12 @@ export const renderCountryMap = (id: string, width: number, height: number): Cou
   );
   const maxScale = width / ((spanDegrees * Math.PI) / 180);
   projection.scale(Math.min(projection.scale() * CONTEXT_ZOOM, maxScale)).translate([width / 2, height / 2]);
+  // Center the whole body rather than the mainland (New Zealand's two islands).
+  const [[bx0, by0], [bx1, by1]] = geoPath(projection).bounds(body);
+  const [cx, cy] = [width - (bx0 + bx1) / 2, height - (by0 + by1) / 2];
+  projection.translate([cx, cy]);
 
   let [minX, minY, maxX, maxY] = [0, 0, width, height];
-  const continent = continentOf(id);
   if (continent) {
     for (const point of framePoints(continent)) {
       if (geoDistance([lon, lat], point) > FRAME_MAX_DISTANCE) {
@@ -238,23 +299,24 @@ export const renderCountryMap = (id: string, width: number, height: number): Cou
     { x: minX - padX, y: minY - padY, width: maxX - minX + 2 * padX, height: maxY - minY + 2 * padY },
     width / height
   );
+  const drawn = fitAspect(overview, MAX_WINDOW_ASPECT);
   projection.clipExtent([
-    [overview.x, overview.y],
-    [overview.x + overview.width, overview.y + overview.height]
+    [drawn.x, drawn.y],
+    [drawn.x + drawn.width, drawn.y + drawn.height]
   ]);
 
   const path = geoPath(projection);
   const target = new Set(indexes);
   const land: string[] = [];
   const highlighted: string[] = [];
-  // Angular radius of the overview's corners, padded because the projection stretches away from center.
+  // Angular radius of the drawn area's corners, padded because the projection stretches away from center.
   const farthestCorner = Math.max(
     ...[
-      [overview.x, overview.y],
-      [overview.x + overview.width, overview.y],
-      [overview.x, overview.y + overview.height],
-      [overview.x + overview.width, overview.y + overview.height]
-    ].map(([x, y]) => Math.hypot(x - width / 2, y - height / 2))
+      [drawn.x, drawn.y],
+      [drawn.x + drawn.width, drawn.y],
+      [drawn.x, drawn.y + drawn.height],
+      [drawn.x + drawn.width, drawn.y + drawn.height]
+    ].map(([x, y]) => Math.hypot(x - cx, y - cy))
   );
   const viewRadius = Math.min(Math.PI, (farthestCorner / projection.scale()) * 1.5);
   features.forEach((country, index) => {
@@ -279,23 +341,26 @@ export const renderCountryMap = (id: string, width: number, height: number): Cou
     landPath: land.join(""),
     targetPath: highlighted.join(""),
     focus: { x: x0, y: y0, width: x1 - x0, height: y1 - y0 },
-    center: { x: width / 2, y: height / 2 }
+    center: { x: cx, y: cy }
   };
 };
 
 /**
- * View box `zoomOut` of the way (0 = country, 1 = continent). Width changes geometrically so each
- * step feels like the same amount of zoom; the center pans in step with the width.
+ * View box `zoomOut` of the way (0 = country, 1 = continent), shaped to the map window (`aspect` =
+ * width ÷ height) by showing more map, so nothing in the zoom's frame is ever cropped. Width changes
+ * geometrically so each step feels like the same amount of zoom; the center pans in step with the width.
  */
-export const viewBoxAt = (render: CountryMapRender, zoomOut: number): ViewBox => {
+export const viewBoxAt = (render: CountryMapRender, zoomOut: number, aspect: number): ViewBox => {
   const { overview } = render;
   const width = render.width * (overview.width / render.width) ** zoomOut;
   const height = (width * render.height) / render.width;
   const pan = overview.width === render.width ? zoomOut : (width - render.width) / (overview.width - render.width);
   const centerX = render.width / 2 + (overview.x + overview.width / 2 - render.width / 2) * pan;
   const centerY = render.height / 2 + (overview.y + overview.height / 2 - render.height / 2) * pan;
-  return { x: centerX - width / 2, y: centerY - height / 2, width, height };
+  return fitAspect({ x: centerX - width / 2, y: centerY - height / 2, width, height }, aspect);
 };
+
+export const __testing = { bodyOf: (id: string) => countryBody(indexesById.get(id) as number[]) };
 
 /** Circle (in map coordinates) around countries too small to spot at this view, or null. */
 export const markerAt = (render: CountryMapRender, view: ViewBox): { cx: number; cy: number; r: number } | null => {

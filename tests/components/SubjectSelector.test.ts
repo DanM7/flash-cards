@@ -3,8 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import SubjectSelector from "../../src/components/SubjectSelector.svelte";
 import { getDecksForGrade } from "../../src/data/decks";
 import SelectSubject from "../../src/routes/select-subject.svelte";
+import { flashcardData } from "../helpers/flashcards";
 
-const options = getDecksForGrade(4);
+const options = getDecksForGrade(flashcardData, 4);
 
 describe("SubjectSelector", () => {
   it("lists deck options and reports the one picked", async () => {

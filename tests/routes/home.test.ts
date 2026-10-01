@@ -1,14 +1,15 @@
 import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import { tick } from "svelte";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { sixthGradeSubjectAreas } from "../../src/data/decks";
+import { describe, expect, it, vi } from "vitest";
+import type { FlashcardData } from "../../src/data/CardTypes";
 import HomeRoute from "../../src/routes/index.svelte";
+import { copyFlashcardData, flashcardData } from "../helpers/flashcards";
 
 const params = () => Object.fromEntries(new URLSearchParams(window.location.search));
 
-const renderHome = (search = "") => {
+const renderHome = (search = "", data: FlashcardData = flashcardData) => {
   history.replaceState(null, "", `/${search}`);
-  const result = render(HomeRoute);
+  const result = render(HomeRoute, { data });
   const onStart = vi.fn();
   result.component.$on("start", onStart);
   return { ...result, onStart, started: () => onStart.mock.calls.map(([event]) => event.detail) };
@@ -28,23 +29,45 @@ const goBackInHistory = async (search: string) => {
 };
 
 describe("home route", () => {
-  afterEach(() => {
-    sixthGradeSubjectAreas.forEach((area) => {
-      area.available = true;
-    });
-  });
-
-  it("lists every grade and writes a blank query string", () => {
+  it("lists every grade with its color and subjects, and writes a blank query string", () => {
     renderHome();
     expect(screen.getByRole("heading", { name: "Flash Cards" })).toBeInTheDocument();
+    expect(screen.getByText("Practice that fits your grade")).toBeInTheDocument();
+    expect(screen.getByText(/^Short practice rounds/)).toBeInTheDocument();
     for (const grade of [2, 3, 4, 5, 6]) {
       expect(gradeButton(grade)).toBeInTheDocument();
     }
+    expect(gradeButton(2)).toHaveClass("home-grade--sky");
+    expect(gradeButton(6)).toHaveClass("home-grade--amber");
     expect(gradeButton(6)).toHaveTextContent("Geography:");
+    expect(within(gradeButton(4)).getByText("Reading:").parentElement).toHaveClass("home-grade__subject--blue");
     expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
   });
 
-  it("goes straight to typing and microphone decks for 4th grade", async () => {
+  it("takes its tagline and intro from the file", async () => {
+    const { component } = renderHome();
+    const data = copyFlashcardData();
+    data.home = { tagline: "New tagline", intro: "New intro" };
+    await component.$set({ data });
+    expect(screen.getByText("New tagline")).toBeInTheDocument();
+    expect(screen.getByText("New intro")).toBeInTheDocument();
+  });
+
+  it("shows the file's Timed limit in the hint", async () => {
+    const { component } = renderHome("?grade=2&subject=math");
+    const hint = screen.getByText(/Multiple choice — Practice at your own pace/);
+    const withLimit = (seconds: number) => {
+      const data = copyFlashcardData();
+      data.multipleChoice.secondsPerQuestion = seconds;
+      return data;
+    };
+    await component.$set({ data: withLimit(30) });
+    expect(hint).toHaveTextContent("Timed with 30 seconds per question.");
+    await component.$set({ data: withLimit(30) });
+    expect(hint).toHaveTextContent("Timed with 30 seconds per question.");
+  });
+
+  it("goes straight to typing and microphone decks for grades without a subject step", async () => {
     const { started } = renderHome();
     await fireEvent.click(gradeButton(4));
     expect(params().grade).toBe("4");
@@ -54,8 +77,8 @@ describe("home route", () => {
     await fireEvent.click(topic("Sight Words").getByRole("button", { name: /Typing/ }));
     await fireEvent.click(topic("Addition Facts").getByRole("button", { name: /Microphone/ }));
     expect(started()).toEqual([
-      { deckId: "sight-words-grade4", useMicrophone: false, interaction: "voice-or-type", timed: false },
-      { deckId: "math-addition-grade4", useMicrophone: true, interaction: "voice-or-type", timed: false }
+      { deckId: "4-reading-sight-words", useMicrophone: false, interaction: "voice-or-type", timed: false },
+      { deckId: "4-math-addition-facts", useMicrophone: true, interaction: "voice-or-type", timed: false }
     ]);
 
     await fireEvent.click(screen.getByRole("button", { name: "← Grades" }));
@@ -69,17 +92,20 @@ describe("home route", () => {
     expect(screen.getByText("Pick a subject.")).toBeInTheDocument();
     const math = screen.getByRole("button", { name: /Math/ });
     expect(math).toHaveClass("home-grade--red");
+    expect(math).toHaveTextContent("Addition and subtraction up to 100.");
 
     await fireEvent.click(math);
     expect(params()).toMatchObject({ grade: "2", subject: "math" });
     expect(screen.getByRole("heading", { name: "2nd Grade · Math" })).toBeInTheDocument();
-    expect(screen.getByText(/Multiple choice — Practice at your own pace/)).toBeInTheDocument();
+    expect(screen.getByText(/Multiple choice — Practice at your own pace/)).toHaveTextContent(
+      "Timed with 20 seconds per question."
+    );
 
     await fireEvent.click(topic("Addition").getByRole("button", { name: "Practice" }));
     await fireEvent.click(topic("Subtraction").getByRole("button", { name: /Timed/ }));
     expect(started()).toEqual([
-      { deckId: "math-grade2-add", useMicrophone: false, interaction: "multiple-choice", timed: false },
-      { deckId: "math-grade2-sub", useMicrophone: false, interaction: "multiple-choice", timed: true }
+      { deckId: "2-math-addition", useMicrophone: false, interaction: "multiple-choice", timed: false },
+      { deckId: "2-math-subtraction", useMicrophone: false, interaction: "multiple-choice", timed: true }
     ]);
 
     await fireEvent.click(screen.getByRole("button", { name: "← 2nd Grade" }));
@@ -87,7 +113,7 @@ describe("home route", () => {
     expect(params().subject).toBe("");
   });
 
-  it("lists 6th grade units, including ones that are coming soon and the geography final", async () => {
+  it("lists units, including ones that are coming soon and the geography final", async () => {
     const { started } = renderHome("?grade=6&subject=math");
     expect(screen.getByRole("heading", { name: "6th Grade · Math" })).toBeInTheDocument();
 
@@ -107,25 +133,38 @@ describe("home route", () => {
     await fireEvent.click(timed);
 
     expect(started()).toEqual([
-      { deckId: "decimal-operations-unit1", useMicrophone: false, interaction: "multiple-choice", timed: false },
-      { deckId: "decimal-operations-unit1", useMicrophone: false, interaction: "multiple-choice", timed: true }
+      { deckId: "6-math-decimal-operations", useMicrophone: false, interaction: "multiple-choice", timed: false },
+      { deckId: "6-math-decimal-operations", useMicrophone: false, interaction: "multiple-choice", timed: true }
     ]);
 
     await fireEvent.click(screen.getByRole("button", { name: "← 6th Grade" }));
     await fireEvent.click(screen.getByRole("button", { name: /Geography/ }));
     const final = topic("Final: All Countries");
     expect(final.getByText("Geography · Final")).toBeInTheDocument();
+    expect(final.getByText("All 194 countries in random order, mixed across every continent.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Final: All Countries" }).closest("article")).toHaveClass(
+      "home-topic--orange"
+    );
   });
 
   it("shows subjects that aren't ready yet as coming soon", async () => {
-    sixthGradeSubjectAreas[1].available = false;
-    renderHome("?grade=6&subject=science");
+    const data = copyFlashcardData();
+    data.grades[4].subjects[1].available = false;
+    renderHome("?grade=6&subject=science", data);
     // An unavailable subject in the URL falls back to the subject list.
     expect(params().subject).toBe("");
     const science = screen.getByRole("button", { name: /Science/ });
     expect(science).toBeDisabled();
     expect(science).toHaveTextContent("Coming soon");
     expect(screen.getByRole("button", { name: /Math/ })).toHaveTextContent("6th Grade");
+  });
+
+  it("shows a subject's grade-tile summary when it has no blurb of its own", async () => {
+    const data = copyFlashcardData();
+    data.grades[2].pickSubject = true;
+    renderHome("?grade=4", data);
+    expect(screen.getByText("Pick a subject.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Reading/ })).toHaveTextContent("Sight words for reading fluency.");
   });
 
   it("ignores an unknown grade in the URL", () => {

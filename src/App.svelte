@@ -6,15 +6,21 @@
   import {
     findDeckByUnit,
     getDeckOptionById,
+    playTextFor,
     resolveDeck,
-    subjectAreasByGrade,
+    subjectStepFor,
     type DeckOption
   } from "./data/decks";
-  import type { InteractionMode, SubjectDeck } from "./data/CardTypes";
+  import type { FlashcardData, InteractionMode, SubjectDeck } from "./data/CardTypes";
   import { readNav, writeNav, type PlayMode } from "./nav";
+  import { loadFlashcards } from "./services/flashcardService";
 
   /** "loading" covers opening a deck straight from the URL, so home doesn't flash first. */
   type View = "home" | "loading" | "play";
+
+  /** Every screen needs the flashcards, so nothing else shows until they arrive. */
+  let data: FlashcardData | null = null;
+  let loadFailed = false;
 
   interface PlayRequest {
     option: DeckOption;
@@ -40,7 +46,7 @@
 
   const requestFromUrl = (): PlayRequest | null => {
     const nav = readNav();
-    const option = findDeckByUnit(nav.grade, nav.subject, nav.unit);
+    const option = findDeckByUnit(data as FlashcardData, nav.grade, nav.subject, nav.unit);
     return option ? { option, mode: modeFor(option, nav.mode) } : null;
   };
 
@@ -54,7 +60,7 @@
 
   const launch = async ({ option, mode }: PlayRequest, how: "push" | "replace" | null) => {
     const request = ++startRequest;
-    const deck = await resolveDeck(option);
+    const deck = await resolveDeck(option, data as FlashcardData);
     if (request !== startRequest) {
       return;
     }
@@ -65,7 +71,9 @@
     playSession += 1;
     view = "play";
     if (how) {
-      const hasSubjectStep = subjectAreasByGrade[option.grade]?.some((area) => area.id === option.subject);
+      const hasSubjectStep = subjectStepFor(data as FlashcardData, option.grade)?.some(
+        (entry) => entry.subject === option.subject
+      );
       writeNav(
         { grade: String(option.grade), subject: hasSubjectStep ? option.subject : "", mode, unit: option.unit },
         how
@@ -73,13 +81,27 @@
     }
   };
 
-  const initialRequest = requestFromUrl();
-  let view: View = initialRequest ? "loading" : "home";
-  if (initialRequest) {
-    launch(initialRequest, "replace").catch(() => {
+  let view: View = "loading";
+
+  const loadData = async () => {
+    loadFailed = false;
+    try {
+      data = await loadFlashcards();
+    } catch {
+      loadFailed = true;
+      return;
+    }
+    const initialRequest = requestFromUrl();
+    if (initialRequest) {
+      launch(initialRequest, "replace").catch(() => {
+        view = "home";
+      });
+    } else {
       view = "home";
-    });
-  }
+    }
+  };
+
+  void loadData();
 
   const start = (
     event: CustomEvent<{
@@ -90,7 +112,7 @@
     }>
   ) => {
     // Home only offers decks from the catalog.
-    const option = getDeckOptionById(event.detail.deckId) as DeckOption;
+    const option = getDeckOptionById(data as FlashcardData, event.detail.deckId) as DeckOption;
     const mode = modeFor(option, event.detail.timed ? "timed" : event.detail.useMicrophone ? "microphone" : "");
     void launch({ option, mode }, "push");
   };
@@ -103,6 +125,9 @@
 
   /** Browser back/forward: open whatever deck the URL names, or return home. */
   const syncFromUrl = () => {
+    if (!data) {
+      return;
+    }
     const request = requestFromUrl();
     if (request) {
       void launch(request, null);
@@ -123,14 +148,33 @@
 
 <div class="fc-shell" class:fc-shell--fit={view === "play"}>
   <main class="fc-shell__main">
-    {#if view === "home"}
-      <HomeRoute on:start={start} />
+    {#if loadFailed}
+      <div class="fc-surface fc-status" role="alert">
+        <p>Couldn't load the flashcards. Check your connection and try again.</p>
+        <button type="button" class="fc-btn fc-btn--primary" on:click={loadData}>Try again</button>
+      </div>
+    {:else if !data}
+      <p class="fc-surface fc-status" role="status">Loading flashcards…</p>
+    {:else if view === "home"}
+      <HomeRoute {data} on:start={start} />
     {:else if view === "play" && selectedDeck}
       {#key playSession}
         {#if interaction === "multiple-choice"}
-          <MultipleChoiceMode deck={selectedDeck} {timed} on:back={backToHome} />
+          <MultipleChoiceMode
+            deck={selectedDeck}
+            {timed}
+            settings={data.multipleChoice}
+            text={playTextFor(data, selectedDeck)}
+            on:back={backToHome}
+          />
         {:else}
-          <PlayRoute deck={selectedDeck} autoMic={useMicrophone} on:back={backToHome} />
+          <PlayRoute
+            deck={selectedDeck}
+            autoMic={useMicrophone}
+            settings={data.typingAndVoice}
+            text={playTextFor(data, selectedDeck)}
+            on:back={backToHome}
+          />
         {/if}
       {/key}
     {/if}
@@ -167,6 +211,22 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .fc-status {
+    margin: auto 0;
+    padding: var(--fc-space-xl);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--fc-space-md);
+    text-align: center;
+    font-weight: 600;
+    color: var(--fc-text-muted);
+  }
+
+  .fc-status p {
+    margin: 0;
   }
 
   .fc-footer {

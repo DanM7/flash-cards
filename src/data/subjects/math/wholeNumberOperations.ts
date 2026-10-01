@@ -1,9 +1,36 @@
-import type { Card, MathDeck, MathOperation } from "../../CardTypes";
+import type { Card, DeckInfo, MathDeck, MathOperation } from "../../CardTypes";
+import { chance, drawNumber, pick, shuffle, type NumberRange, type NumberRule } from "./rules";
 
 type Op = "add" | "sub" | "mul" | "div";
 
-export type WholeNumberGrade = 2 | 3;
 export type WholeNumberTopic = Op | "mixed";
+
+interface OperandRule {
+  /** Both numbers are drawn from this. */
+  operand: NumberRule;
+  /** Swap so the larger number comes first (subtraction that never goes below zero). */
+  largerFirst?: boolean;
+}
+
+interface DivisionRule {
+  divisor: NumberRule;
+  /** The dividend is divisor × quotient, so division always comes out even. */
+  quotient: NumberRule;
+}
+
+export interface WholeNumberGradeRules {
+  /** Allowed range for numbers, answers, and wrong answers. */
+  range: NumberRange;
+  /** Chance each number is made negative. */
+  negativeChance: number;
+  /** The operations this grade practices; mixed decks draw from all of them. */
+  operations: { add?: OperandRule; sub?: OperandRule; mul?: OperandRule; div?: DivisionRule };
+}
+
+export interface WholeNumberRules {
+  deckSize: number;
+  grades: Record<string, WholeNumberGradeRules>;
+}
 
 interface Problem {
   a: number;
@@ -11,19 +38,9 @@ interface Problem {
   op: Op;
 }
 
-export const WHOLE_NUMBER_DECK_SIZE = 20;
-
 const OPS: Op[] = ["add", "sub", "mul", "div"];
 
 const OP_SYMBOL: Record<Op, string> = { add: "+", sub: "−", mul: "×", div: "÷" };
-
-const TOPIC_LABEL: Record<WholeNumberTopic, string> = {
-  add: "Addition",
-  sub: "Subtraction",
-  mul: "Multiplication",
-  div: "Division",
-  mixed: "All Four Operations"
-};
 
 const TOPIC_OPERATION: Record<WholeNumberTopic, MathOperation> = {
   add: "addition",
@@ -31,26 +48,6 @@ const TOPIC_OPERATION: Record<WholeNumberTopic, MathOperation> = {
   mul: "multiplication",
   div: "division",
   mixed: "mixed"
-};
-
-/** Allowed range for operands, answers, and wrong answers. */
-const RANGE: Record<WholeNumberGrade, { min: number; max: number }> = {
-  2: { min: 0, max: 100 },
-  3: { min: -1000, max: 1000 }
-};
-
-const randomInt = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const pick = <T>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)] as T;
-
-const shuffle = <T>(items: T[]): T[] => {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
-  }
-  return next;
 };
 
 const compute = (a: number, b: number, op: Op): number => {
@@ -73,56 +70,37 @@ const buildPrompt = (problem: Problem): string => {
   return `${formatNumber(problem.a)} ${OP_SYMBOL[problem.op]} ${right}`;
 };
 
-const inRange = (value: number, grade: WholeNumberGrade): boolean =>
-  Number.isInteger(value) && value >= RANGE[grade].min && value <= RANGE[grade].max;
+const inRange = (value: number, rules: WholeNumberGradeRules): boolean =>
+  Number.isInteger(value) && value >= rules.range.min && value <= rules.range.max;
 
-/** 1- or 2-digit number, leaning toward 2 digits. */
-const oneOrTwoDigits = (): number => (Math.random() < 0.3 ? randomInt(1, 9) : randomInt(10, 99));
+const gradeOps = (rules: WholeNumberGradeRules): Op[] => OPS.filter((op) => rules.operations[op]);
 
-/** 1- to 3-digit number. */
-const upToThreeDigits = (): number => {
-  const roll = Math.random();
-  if (roll < 0.2) {
-    return randomInt(1, 9);
+const maybeNegative = (value: number, rules: WholeNumberGradeRules): number =>
+  rules.negativeChance > 0 && chance(rules.negativeChance) ? -value : value;
+
+const signedDraw = (rule: NumberRule, rules: WholeNumberGradeRules): number =>
+  maybeNegative(drawNumber(rule), rules);
+
+const drawProblem = (op: Op, rules: WholeNumberGradeRules): Problem => {
+  if (op === "div") {
+    const rule = rules.operations.div as DivisionRule;
+    const divisor = signedDraw(rule.divisor, rules);
+    const quotient = signedDraw(rule.quotient, rules);
+    return { a: divisor * quotient, b: divisor, op };
   }
-  if (roll < 0.6) {
-    return randomInt(10, 99);
+  const rule = rules.operations[op] as OperandRule;
+  let a = signedDraw(rule.operand, rules);
+  let b = signedDraw(rule.operand, rules);
+  if (rule.largerFirst && a < b) {
+    [a, b] = [b, a];
   }
-  return randomInt(100, 999);
+  return { a, b, op };
 };
 
-const maybeNegative = (value: number): number => (Math.random() < 0.3 ? -value : value);
-
-const generateGrade2 = (op: "add" | "sub"): Problem => {
+const generateProblem = (op: Op, rules: WholeNumberGradeRules): Problem => {
   for (;;) {
-    let a = oneOrTwoDigits();
-    let b = oneOrTwoDigits();
-    if (op === "add") {
-      if (a + b <= 100) {
-        return { a, b, op };
-      }
-      continue;
-    }
-    if (a < b) {
-      [a, b] = [b, a];
-    }
-    return { a, b, op };
-  }
-};
-
-const generateGrade3 = (op: Op): Problem => {
-  for (;;) {
-    let problem: Problem;
-    if (op === "add" || op === "sub") {
-      problem = { a: maybeNegative(upToThreeDigits()), b: maybeNegative(upToThreeDigits()), op };
-    } else if (op === "mul") {
-      problem = { a: maybeNegative(randomInt(2, 12)), b: maybeNegative(randomInt(2, 12)), op };
-    } else {
-      const divisor = maybeNegative(randomInt(2, 12));
-      const quotient = maybeNegative(randomInt(1, 12));
-      problem = { a: divisor * quotient, b: divisor, op };
-    }
-    if (inRange(problem.a, 3) && inRange(problem.b, 3) && inRange(compute(problem.a, problem.b, op), 3)) {
+    const problem = drawProblem(op, rules);
+    if (inRange(problem.a, rules) && inRange(problem.b, rules) && inRange(compute(problem.a, problem.b, op), rules)) {
       return problem;
     }
   }
@@ -163,11 +141,11 @@ const noCarryOrBorrow = (problem: Problem): number | null => {
   return Number(result);
 };
 
-const buildChoices = (problem: Problem, correct: number, grade: WholeNumberGrade): string[] => {
+const buildChoices = (problem: Problem, correct: number, rules: WholeNumberGradeRules): string[] => {
   const used = new Set<number>([correct]);
   const picked: number[] = [];
 
-  const isUsable = (value: number): boolean => inRange(value, grade) && !used.has(value);
+  const isUsable = (value: number): boolean => inRange(value, rules) && !used.has(value);
   const take = (value: number) => {
     used.add(value);
     picked.push(value);
@@ -178,16 +156,15 @@ const buildChoices = (problem: Problem, correct: number, grade: WholeNumberGrade
     take(slightlyOff);
   }
 
-  const wrongOps = grade === 2 ? OPS.filter((op) => op === "add" || op === "sub") : OPS;
   const pool: Distractor[] = [
     { kind: "off-by-ten", value: correct + 10 },
     { kind: "off-by-ten", value: correct - 10 },
-    ...wrongOps
+    ...gradeOps(rules)
       .filter((op) => op !== problem.op)
       .map((op) => ({ kind: "wrong-operation" as const, value: compute(problem.a, problem.b, op) })),
     { kind: "digit-reversal", value: reverseDigits(correct) }
   ];
-  if (grade === 3 && correct !== 0) {
+  if (rules.range.min < 0 && correct !== 0) {
     pool.push({ kind: "sign-flip", value: -correct });
   }
   const noCarry = noCarryOrBorrow(problem);
@@ -225,30 +202,32 @@ const buildChoices = (problem: Problem, correct: number, grade: WholeNumberGrade
   return shuffle([correct, ...picked]).map(formatNumber);
 };
 
-const toCard = (problem: Problem, grade: WholeNumberGrade): Card => {
+const toCard = (problem: Problem, rules: WholeNumberGradeRules): Card => {
   const correct = compute(problem.a, problem.b, problem.op);
   return {
     prompt: buildPrompt(problem),
     answers: [formatNumber(correct)],
-    choices: buildChoices(problem, correct, grade)
+    choices: buildChoices(problem, correct, rules)
   };
 };
 
-const generateProblem = (grade: WholeNumberGrade, topic: WholeNumberTopic): Problem => {
-  const op = topic === "mixed" ? pick(grade === 2 ? (["add", "sub"] as const) : OPS) : topic;
-  if (grade === 2) {
-    if (op !== "add" && op !== "sub") {
-      throw new Error(`2nd grade only supports addition and subtraction (got ${op}).`);
-    }
-    return generateGrade2(op);
+export const createWholeNumberDeck = (topic: WholeNumberTopic, rules: WholeNumberRules, info: DeckInfo): MathDeck => {
+  const { grade, unitLabel } = info;
+  const gradeRules = rules.grades[grade];
+  if (!gradeRules) {
+    throw new Error(`No math rules for grade ${grade}.`);
   }
-  return generateGrade3(op);
+  const ops = gradeOps(gradeRules);
+  if (topic !== "mixed" && !ops.includes(topic)) {
+    throw new Error(`Grade ${grade} math rules don't include ${topic}.`);
+  }
+  return {
+    subject: "math",
+    operation: TOPIC_OPERATION[topic],
+    grade,
+    unitLabel,
+    cards: Array.from({ length: rules.deckSize }, () =>
+      toCard(generateProblem(topic === "mixed" ? pick(ops) : topic, gradeRules), gradeRules)
+    )
+  };
 };
-
-export const createWholeNumberDeck = (grade: WholeNumberGrade, topic: WholeNumberTopic): MathDeck => ({
-  subject: "math",
-  operation: TOPIC_OPERATION[topic],
-  grade,
-  unitLabel: `${grade === 2 ? "2nd" : "3rd"} Grade · ${TOPIC_LABEL[topic]}`,
-  cards: Array.from({ length: WHOLE_NUMBER_DECK_SIZE }, () => toCard(generateProblem(grade, topic), grade))
-});

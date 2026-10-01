@@ -1,8 +1,0 @@
-{
-  "subject": "vocabulary",
-  "topic": "science",
-  "cards": [
-    { "prompt": "The star at the center of our solar system", "answers": ["sun", "the sun"] },
-    { "prompt": "Water in gas form", "answers": ["vapor", "water vapor"] }
-  ]
-}

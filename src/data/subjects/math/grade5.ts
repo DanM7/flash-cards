@@ -1,4 +1,15 @@
-import type { Card, MathDeck, MathOperation } from "../../CardTypes";
+import type { Card, DeckInfo, MathDeck, MathOperation } from "../../CardTypes";
+import {
+  chance,
+  drawNumber,
+  pick,
+  pickKey,
+  pickWeighted,
+  randomInt,
+  shuffle,
+  type NumberRange,
+  type NumberRule
+} from "./rules";
 
 export type Grade5Topic =
   | "multiplication"
@@ -10,7 +21,42 @@ export type Grade5Topic =
 
 type SingleTopic = Exclude<Grade5Topic, "mixed">;
 
-export const GRADE5_DECK_SIZE = 20;
+type FractionProblem = "add-subtract" | "multiply";
+type DecimalProblem = "add-subtract" | "power-of-ten" | "times-whole";
+
+export interface Grade5Rules {
+  deckSize: number;
+  /** How often each topic comes up in the mixed review. */
+  mixed: Partial<Record<SingleTopic, number>>;
+  multiplication: {
+    /** Sizes of the two factors, picked by weight. */
+    shapes: { weight: number; first: NumberRange; second: NumberRange }[];
+  };
+  division: {
+    divisor: NumberRule;
+    remainderChance: number;
+    quotientMin: number;
+    dividendMax: number;
+  };
+  fractions: {
+    problems: Partial<Record<FractionProblem, number>>;
+    denominators: number[];
+    addChance: number;
+    wholeTimesFractionChance: number;
+    wholeFactor: NumberRange;
+  };
+  decimals: {
+    problems: Partial<Record<DecimalProblem, number>>;
+    /** Number ranges are for the whole-number part; `places` are the decimal places to choose from. */
+    addSubtract: { addChance: number; places: number[]; first: NumberRange; second: NumberRange };
+    powerOfTen: { multiplyChance: number; powers: number[]; places: number[]; number: NumberRange };
+    timesWhole: { places: number[]; decimal: NumberRange; whole: NumberRange };
+  };
+  orderOfOperations: {
+    /** Keyed by the expression's shape; `numbers` gives the range for each letter or helper value. */
+    templates: Record<string, { weight: number; numbers: Record<string, NumberRange> }>;
+  };
+}
 
 interface Distractor {
   kind: string;
@@ -29,15 +75,6 @@ interface Problem {
   fallback: (string | null)[];
 }
 
-const TOPIC_LABEL: Record<Grade5Topic, string> = {
-  multiplication: "Multi-Digit Multiplication",
-  division: "Long Division",
-  fractions: "Fractions",
-  decimals: "Decimals",
-  "order-of-operations": "Order of Operations",
-  mixed: "Mixed Review"
-};
-
 const TOPIC_OPERATION: Record<Grade5Topic, MathOperation> = {
   multiplication: "multiplication",
   division: "division",
@@ -45,20 +82,6 @@ const TOPIC_OPERATION: Record<Grade5Topic, MathOperation> = {
   decimals: "decimal-operations",
   "order-of-operations": "order-of-operations",
   mixed: "mixed"
-};
-
-const randomInt = (min: number, max: number): number =>
-  Math.floor(Math.random() * (max - min + 1)) + min;
-
-const pick = <T>(items: readonly T[]): T => items[Math.floor(Math.random() * items.length)] as T;
-
-const shuffle = <T>(items: T[]): T[] => {
-  const next = [...items];
-  for (let i = next.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [next[i], next[j]] = [next[j], next[i]];
-  }
-  return next;
 };
 
 const gcd = (a: number, b: number): number => (b === 0 ? Math.abs(a) : gcd(b, a % b));
@@ -148,14 +171,10 @@ const noCarryProduct = (a: number, b: number): number =>
       .join("")
   );
 
-const multiplication = (): Problem => {
-  const roll = Math.random();
-  const [a, b] =
-    roll < 0.3
-      ? [randomInt(12, 99), randomInt(12, 99)]
-      : roll < 0.8
-        ? [randomInt(101, 999), randomInt(12, 99)]
-        : [randomInt(1001, 9999), randomInt(3, 9)];
+const multiplication = (rules: Grade5Rules): Problem => {
+  const shape = pickWeighted(rules.multiplication.shapes, (option) => option.weight);
+  const a = drawNumber(shape.first);
+  const b = drawNumber(shape.second);
   const correct = a * b;
   const pool: Distractor[] = [
     { kind: "off-by-ten", value: whole(correct * 10) },
@@ -197,10 +216,11 @@ const multiplication = (): Problem => {
   };
 };
 
-const division = (): Problem => {
-  const divisor = Math.random() < 0.7 ? randomInt(11, 99) : randomInt(3, 9);
-  const remainder = Math.random() < 0.3 ? randomInt(1, divisor - 1) : 0;
-  const quotient = randomInt(10, Math.floor((9999 - remainder) / divisor));
+const division = (rules: Grade5Rules): Problem => {
+  const { remainderChance, quotientMin, dividendMax } = rules.division;
+  const divisor = drawNumber(rules.division.divisor);
+  const remainder = chance(remainderChance) ? randomInt(1, divisor - 1) : 0;
+  const quotient = randomInt(quotientMin, Math.floor((dividendMax - remainder) / divisor));
   const dividend = divisor * quotient + remainder;
 
   const qr = (q: number, r: number): string | null => {
@@ -250,8 +270,6 @@ const division = (): Problem => {
   };
 };
 
-const DENOMINATORS = [2, 3, 4, 5, 6, 8, 10, 12];
-
 /** Numerator for a proper fraction already in lowest terms. */
 const simplifiedNumerator = (denominator: number): number => {
   for (;;) {
@@ -265,11 +283,11 @@ const simplifiedNumerator = (denominator: number): number => {
 const convertStep = (n: number, d: number, lcd: number): string =>
   d === lcd ? `${n}/${d} stays ${n}/${d}` : `${n}/${d} = ${n * (lcd / d)}/${lcd}`;
 
-const fractionAddSubtract = (): Problem => {
-  const add = Math.random() < 0.5;
+const fractionAddSubtract = ({ fractions: rules }: Grade5Rules): Problem => {
+  const add = chance(rules.addChance);
   for (;;) {
-    let b = pick(DENOMINATORS);
-    let d = pick(DENOMINATORS);
+    let b = pick(rules.denominators);
+    let d = pick(rules.denominators);
     if (b === d) {
       continue;
     }
@@ -307,11 +325,11 @@ const fractionAddSubtract = (): Problem => {
   }
 };
 
-const fractionMultiply = (): Problem => {
-  const b = pick(DENOMINATORS);
+const fractionMultiply = ({ fractions: rules }: Grade5Rules): Problem => {
+  const b = pick(rules.denominators);
   const a = simplifiedNumerator(b);
-  if (Math.random() < 0.5) {
-    const n = randomInt(2, 9);
+  if (chance(rules.wholeTimesFractionChance)) {
+    const n = drawNumber(rules.wholeFactor);
     const numerator = n * a;
     return {
       prompt: `${n} × ${a}/${b}`,
@@ -326,7 +344,7 @@ const fractionMultiply = (): Problem => {
       fallback: [2, 3, 4].flatMap((step) => [frac(numerator + step, b), frac(numerator - step, b)])
     };
   }
-  const d = pick(DENOMINATORS);
+  const d = pick(rules.denominators);
   const c = simplifiedNumerator(d);
   const numerator = a * c;
   const denominator = b * d;
@@ -345,7 +363,12 @@ const fractionMultiply = (): Problem => {
   };
 };
 
-const fractions = (): Problem => (Math.random() < 0.6 ? fractionAddSubtract() : fractionMultiply());
+const FRACTION_PROBLEMS: Record<FractionProblem, (rules: Grade5Rules) => Problem> = {
+  "add-subtract": fractionAddSubtract,
+  multiply: fractionMultiply
+};
+
+const fractions = (rules: Grade5Rules): Problem => FRACTION_PROBLEMS[pickKey(rules.fractions.problems)](rules);
 
 /** Random decimal with a whole part in [minWhole, maxWhole] and exactly `places` decimal places. */
 const randomDecimal = (minWhole: number, maxWhole: number, places: number): number => {
@@ -357,14 +380,15 @@ const randomDecimal = (minWhole: number, maxWhole: number, places: number): numb
   return round6(randomInt(minWhole, maxWhole) + fraction / scale);
 };
 
-const decimalAddSubtract = (): Problem => {
-  const add = Math.random() < 0.5;
-  const placesA = pick([1, 2]);
-  const placesB = pick([1, 2]);
-  let a = randomDecimal(1, 49, placesA);
-  let b = randomDecimal(0, 29, placesB);
+const decimalAddSubtract = (all: Grade5Rules): Problem => {
+  const rules = all.decimals.addSubtract;
+  const add = chance(rules.addChance);
+  const placesA = pick(rules.places);
+  const placesB = pick(rules.places);
+  let a = randomDecimal(rules.first.min, rules.first.max, placesA);
+  let b = randomDecimal(rules.second.min, rules.second.max, placesB);
   while (a === b) {
-    b = randomDecimal(0, 29, placesB);
+    b = randomDecimal(rules.second.min, rules.second.max, placesB);
   }
   let [pa, pb] = [placesA, placesB];
   if (!add && a <= b) {
@@ -403,11 +427,12 @@ const decimalAddSubtract = (): Problem => {
   };
 };
 
-const decimalPowerOfTen = (): Problem => {
-  const zeros = pick([1, 2, 3]);
-  const power = 10 ** zeros;
-  const multiply = Math.random() < 0.5;
-  const a = randomDecimal(0, 99, pick([1, 2]));
+const decimalPowerOfTen = (all: Grade5Rules): Problem => {
+  const rules = all.decimals.powerOfTen;
+  const power = pick(rules.powers);
+  const zeros = Math.round(Math.log10(power));
+  const multiply = chance(rules.multiplyChance);
+  const a = randomDecimal(rules.number.min, rules.number.max, pick(rules.places));
   const correct = multiply ? a * power : a / power;
   const direction = multiply ? "right" : "left";
   return {
@@ -425,10 +450,11 @@ const decimalPowerOfTen = (): Problem => {
   };
 };
 
-const decimalTimesWhole = (): Problem => {
-  const places = pick([1, 2]);
-  const a = randomDecimal(0, 9, places);
-  const n = randomInt(2, 9);
+const decimalTimesWhole = (all: Grade5Rules): Problem => {
+  const rules = all.decimals.timesWhole;
+  const places = pick(rules.places);
+  const a = randomDecimal(rules.decimal.min, rules.decimal.max, places);
+  const n = drawNumber(rules.whole);
   const correct = round6(a * n);
   const scaled = Math.round(a * 10 ** places);
   return {
@@ -446,13 +472,13 @@ const decimalTimesWhole = (): Problem => {
   };
 };
 
-const decimals = (): Problem => {
-  const roll = Math.random();
-  if (roll < 0.5) {
-    return decimalAddSubtract();
-  }
-  return roll < 0.75 ? decimalPowerOfTen() : decimalTimesWhole();
+const DECIMAL_PROBLEMS: Record<DecimalProblem, (rules: Grade5Rules) => Problem> = {
+  "add-subtract": decimalAddSubtract,
+  "power-of-ten": decimalPowerOfTen,
+  "times-whole": decimalTimesWhole
 };
+
+const decimals = (rules: Grade5Rules): Problem => DECIMAL_PROBLEMS[pickKey(rules.decimals.problems)](rules);
 
 interface OrderTemplate {
   prompt: string;
@@ -462,9 +488,13 @@ interface OrderTemplate {
   hint: string;
 }
 
-const orderTemplates: (() => OrderTemplate)[] = [
-  () => {
-    const [a, b, c] = [randomInt(2, 20), randomInt(2, 9), randomInt(2, 9)];
+/** Draws the named number from the template's ranges. */
+type Draw = (name: string) => number;
+
+/** Keys match `orderOfOperations.templates` in flashcards.json. */
+const ORDER_TEMPLATES: Record<string, (n: Draw) => OrderTemplate> = {
+  "a + b × c": (n) => {
+    const [a, b, c] = [n("a"), n("b"), n("c")];
     return {
       prompt: `${a} + ${b} × ${c}`,
       correct: a + b * c,
@@ -472,8 +502,8 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Multiply before you add: ${b} × ${c} = ${b * c}.`
     };
   },
-  () => {
-    const [a, b, c] = [randomInt(2, 15), randomInt(2, 15), randomInt(2, 9)];
+  "(a + b) × c": (n) => {
+    const [a, b, c] = [n("a"), n("b"), n("c")];
     return {
       prompt: `(${a} + ${b}) × ${c}`,
       correct: (a + b) * c,
@@ -481,9 +511,9 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Parentheses first: ${a} + ${b} = ${a + b}.`
     };
   },
-  () => {
-    const [b, c] = [randomInt(2, 6), randomInt(2, 6)];
-    const a = b * c + randomInt(1, 30);
+  "a − b × c": (n) => {
+    const [b, c] = [n("b"), n("c")];
+    const a = b * c + n("leftover");
     return {
       prompt: `${a} − ${b} × ${c}`,
       correct: a - b * c,
@@ -491,9 +521,9 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Multiply before you subtract: ${b} × ${c} = ${b * c}.`
     };
   },
-  () => {
-    const c = randomInt(1, 10);
-    const [a, b] = [randomInt(2, 9), c + randomInt(2, 10)];
+  "a × (b − c)": (n) => {
+    const c = n("c");
+    const [a, b] = [n("a"), c + n("difference")];
     return {
       prompt: `${a} × (${b} − ${c})`,
       correct: a * (b - c),
@@ -501,10 +531,10 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Parentheses first: ${b} − ${c} = ${b - c}.`
     };
   },
-  () => {
-    const c = randomInt(2, 9);
-    const b = c * randomInt(2, 9);
-    const a = randomInt(2, 30);
+  "a + b ÷ c": (n) => {
+    const c = n("c");
+    const b = c * n("quotient");
+    const a = n("a");
     return {
       prompt: `${a} + ${b} ÷ ${c}`,
       correct: a + b / c,
@@ -512,10 +542,10 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Divide before you add: ${b} ÷ ${c} = ${b / c}.`
     };
   },
-  () => {
-    const c = randomInt(2, 9);
-    const b = randomInt(2, 20);
-    const a = b + c * randomInt(2, 9);
+  "(a − b) ÷ c": (n) => {
+    const c = n("c");
+    const b = n("b");
+    const a = b + c * n("quotient");
     return {
       prompt: `(${a} − ${b}) ÷ ${c}`,
       correct: (a - b) / c,
@@ -523,8 +553,8 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Parentheses first: ${a} − ${b} = ${a - b}.`
     };
   },
-  () => {
-    const [a, b, c, d] = [randomInt(2, 9), randomInt(2, 9), randomInt(2, 9), randomInt(2, 9)];
+  "a × b + c × d": (n) => {
+    const [a, b, c, d] = [n("a"), n("b"), n("c"), n("d")];
     return {
       prompt: `${a} × ${b} + ${c} × ${d}`,
       correct: a * b + c * d,
@@ -532,10 +562,21 @@ const orderTemplates: (() => OrderTemplate)[] = [
       hint: `Do both multiplications first: ${a} × ${b} = ${a * b} and ${c} × ${d} = ${c * d}.`
     };
   }
-];
+};
 
-const orderOfOperations = (): Problem => {
-  const template = pick(orderTemplates)();
+const orderOfOperations = (rules: Grade5Rules): Problem => {
+  const [shape, rule] = pickWeighted(Object.entries(rules.orderOfOperations.templates), ([, t]) => t.weight);
+  const build = ORDER_TEMPLATES[shape];
+  if (!build) {
+    throw new Error(`Unknown order-of-operations template "${shape}".`);
+  }
+  const template = build((name) => {
+    const range = rule.numbers[name];
+    if (!range) {
+      throw new Error(`Order-of-operations template "${shape}" needs a range for "${name}".`);
+    }
+    return randomInt(range.min, range.max);
+  });
   const { correct } = template;
   return {
     prompt: template.prompt,
@@ -552,15 +593,13 @@ const orderOfOperations = (): Problem => {
   };
 };
 
-const GENERATORS: Record<SingleTopic, () => Problem> = {
+const GENERATORS: Record<SingleTopic, (rules: Grade5Rules) => Problem> = {
   multiplication,
   division,
   fractions,
   decimals,
   "order-of-operations": orderOfOperations
 };
-
-const SINGLE_TOPICS = Object.keys(GENERATORS) as SingleTopic[];
 
 const toCard = (problem: Problem): Card => ({
   prompt: problem.prompt,
@@ -569,16 +608,16 @@ const toCard = (problem: Problem): Card => ({
   hint: problem.hint
 });
 
-const generate = (topic: Grade5Topic): Problem =>
-  GENERATORS[topic === "mixed" ? pick(SINGLE_TOPICS) : topic]();
+const generate = (topic: Grade5Topic, rules: Grade5Rules): Problem =>
+  GENERATORS[topic === "mixed" ? pickKey(rules.mixed) : topic](rules);
 
 /** Internals exposed only so tests can reach safety nets that random decks never hit. */
 export const __testing = { assembleChoices };
 
-export const createGrade5Deck = (topic: Grade5Topic): MathDeck => ({
+export const createGrade5Deck = (topic: Grade5Topic, rules: Grade5Rules, info: DeckInfo): MathDeck => ({
   subject: "math",
   operation: TOPIC_OPERATION[topic],
-  grade: 5,
-  unitLabel: `5th Grade · ${TOPIC_LABEL[topic]}`,
-  cards: Array.from({ length: GRADE5_DECK_SIZE }, () => toCard(generate(topic)))
+  grade: info.grade,
+  unitLabel: info.unitLabel,
+  cards: Array.from({ length: rules.deckSize }, () => toCard(generate(topic, rules)))
 });

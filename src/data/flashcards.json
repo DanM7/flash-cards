@@ -1,0 +1,952 @@
+{
+  "home": {
+    "tagline": "Practice that fits your grade",
+    "intro": "Short practice rounds for reading, math, science, and French. Pick a grade, choose a topic, and work through shuffled cards at your own pace."
+  },
+  "multipleChoice": {
+    "secondsPerQuestion": 20,
+    "lowTimeSeconds": 5,
+    "roundSize": 10,
+    "wrongChoices": 3,
+    "scoring": { "firstTry": 10, "perWrongPick": 3, "hint": 1, "minimum": 1 },
+    "encouragement": ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super!"]
+  },
+  "typingAndVoice": {
+    "cardsBeforeBreak": 5,
+    "breakSeconds": 2.8,
+    "encouragement": ["Great job!", "Nice work!", "You're doing awesome!", "Way to go!", "Super reading!"]
+  },
+  "geography": {
+    "nearbyCountries": 6
+  },
+  "playText": {
+    "default": {
+      "title": "Practice",
+      "promptName": "word",
+      "choiceCue": "Answer this",
+      "typingCue": "Say this word",
+      "finishedTitle": "You finished the deck!",
+      "choiceFinished": "Nice studying. Head home when you want another round.",
+      "typingFinished": "Amazing reading practice. Want another round? Head home and start again."
+    },
+    "sight-words": { "title": "Sight words" },
+    "math": {
+      "title": "Math facts",
+      "promptName": "problem",
+      "choiceCue": "Solve this",
+      "typingCue": "Solve this",
+      "choiceFinished": "Great math practice. Head home when you want another round."
+    },
+    "decimal-operations": {
+      "title": "Decimal Operations",
+      "choiceFinished": "Solid decimal practice. Head home when you want another round."
+    },
+    "science": { "title": "Science" },
+    "french": { "title": "French" },
+    "geography": { "title": "Geography" },
+    "vocabulary": { "title": "Vocabulary" }
+  },
+  "subjects": {
+    "math": { "label": "Math", "color": "red" },
+    "science": { "label": "Science", "color": "green" },
+    "french": { "label": "French", "color": "purple" },
+    "reading": { "label": "Reading", "color": "blue" },
+    "history": { "label": "History", "color": "yellow" },
+    "geography": { "label": "Geography", "color": "orange" }
+  },
+  "grades": [
+    {
+      "grade": 2,
+      "label": "2nd Grade",
+      "color": "sky",
+      "pickSubject": true,
+      "subjects": [
+        {
+          "subject": "math",
+          "summary": "Addition and subtraction with 1- and 2-digit numbers.",
+          "blurb": "Addition and subtraction up to 100.",
+          "decks": [
+            {
+              "unit": "addition",
+              "title": "Addition",
+              "description": "1- and 2-digit sums that never go over 100.",
+              "build": { "type": "wholeNumberOperations", "topic": "add" }
+            },
+            {
+              "unit": "subtraction",
+              "title": "Subtraction",
+              "description": "1- and 2-digit differences — never below zero.",
+              "build": { "type": "wholeNumberOperations", "topic": "sub" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": 3,
+      "label": "3rd Grade",
+      "color": "violet",
+      "pickSubject": true,
+      "subjects": [
+        {
+          "subject": "math",
+          "summary": "All four operations, including negative numbers.",
+          "blurb": "All four operations, with numbers from −1000 to 1000.",
+          "decks": [
+            {
+              "unit": "addition",
+              "title": "Addition",
+              "description": "Up to 3-digit numbers, including negatives.",
+              "build": { "type": "wholeNumberOperations", "topic": "add" }
+            },
+            {
+              "unit": "subtraction",
+              "title": "Subtraction",
+              "description": "Up to 3-digit numbers, including negatives.",
+              "build": { "type": "wholeNumberOperations", "topic": "sub" }
+            },
+            {
+              "unit": "multiplication",
+              "title": "Multiplication",
+              "description": "Times tables through 12, including negatives.",
+              "build": { "type": "wholeNumberOperations", "topic": "mul" }
+            },
+            {
+              "unit": "division",
+              "title": "Division",
+              "description": "Division facts through 12, including negatives.",
+              "build": { "type": "wholeNumberOperations", "topic": "div" }
+            },
+            {
+              "unit": "mixed",
+              "title": "All Four Operations",
+              "description": "A mix of +, −, ×, and ÷ problems.",
+              "build": { "type": "wholeNumberOperations", "topic": "mixed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": 4,
+      "label": "4th Grade",
+      "color": "teal",
+      "subjects": [
+        {
+          "subject": "reading",
+          "summary": "Sight words for reading fluency.",
+          "decks": [
+            {
+              "unit": "sight-words",
+              "title": "Sight Words",
+              "description": "Practice high-frequency words aloud or by typing. Cards shuffle each round; with the mic, pause briefly after each word.",
+              "interaction": "voice-or-type",
+              "build": { "type": "cards", "category": "sight-words-grade4", "deckType": "sight-words" }
+            }
+          ]
+        },
+        {
+          "subject": "math",
+          "summary": "Quick addition facts.",
+          "decks": [
+            {
+              "unit": "addition-facts",
+              "title": "Addition Facts",
+              "description": "Quick sums under ten. Say the answer or type it — digits like “7” or words like “seven” both work when using voice.",
+              "interaction": "voice-or-type",
+              "build": { "type": "cards", "category": "math-addition-grade4", "operation": "addition" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": 5,
+      "label": "5th Grade",
+      "color": "rose",
+      "pickSubject": true,
+      "subjects": [
+        {
+          "subject": "math",
+          "summary": "Multi-digit multiplication, long division, fractions, decimals, and order of operations.",
+          "blurb": "Multi-digit multiplication, long division, fractions, decimals, and order of operations.",
+          "decks": [
+            {
+              "unit": "multiplication",
+              "title": "Multi-Digit Multiplication",
+              "description": "2- and 3-digit numbers times 2-digit numbers, plus 4-digit times 1-digit.",
+              "build": { "type": "grade5", "topic": "multiplication" }
+            },
+            {
+              "unit": "division",
+              "title": "Long Division",
+              "description": "Up to 4-digit dividends and 2-digit divisors, some with remainders.",
+              "build": { "type": "grade5", "topic": "division" }
+            },
+            {
+              "unit": "fractions",
+              "title": "Fractions",
+              "description": "Add and subtract with unlike denominators, and multiply fractions.",
+              "build": { "type": "grade5", "topic": "fractions" }
+            },
+            {
+              "unit": "decimals",
+              "title": "Decimals",
+              "description": "Add and subtract to hundredths, multiply by whole numbers, and × or ÷ by 10, 100, and 1,000.",
+              "build": { "type": "grade5", "topic": "decimals" }
+            },
+            {
+              "unit": "order-of-operations",
+              "title": "Order of Operations",
+              "description": "Parentheses, then × and ÷, then + and −.",
+              "build": { "type": "grade5", "topic": "order-of-operations" }
+            },
+            {
+              "unit": "mixed",
+              "title": "Mixed Review",
+              "description": "A mix of every 5th grade topic.",
+              "build": { "type": "grade5", "topic": "mixed" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "grade": 6,
+      "label": "6th Grade",
+      "color": "amber",
+      "pickSubject": true,
+      "subjects": [
+        {
+          "subject": "math",
+          "summary": "Decimal operations, with more units coming.",
+          "blurb": "Ten units for the year, starting with Decimal Operations.",
+          "units": [
+            {
+              "label": "Unit 1",
+              "title": "Decimal Operations",
+              "deck": {
+                "unit": "decimal-operations",
+                "description": "Add, subtract, multiply, and divide decimals — including money and measurement.",
+                "build": { "type": "decimalOperations" }
+              }
+            },
+            { "label": "Unit 2", "title": "Fraction Operations" },
+            { "label": "Unit 3", "title": "The Number System" },
+            { "label": "Unit 4", "title": "Ratios" },
+            { "label": "Unit 5", "title": "Rates and Percents" },
+            { "label": "Unit 6", "title": "Coordinate Plane" },
+            { "label": "Unit 7", "title": "Expressions" },
+            { "label": "Unit 8", "title": "Equations & Inequalities" },
+            { "label": "Unit 9", "title": "Geometry" },
+            { "label": "Unit 10", "title": "Data and Statistics" }
+          ]
+        },
+        {
+          "subject": "science",
+          "summary": "Cells, human body, genetics, evolution, and environment.",
+          "blurb": "Cells, the human body, genetics, evolution, and environmental science.",
+          "units": [
+            {
+              "label": "Unit 1",
+              "title": "Cells",
+              "deck": {
+                "unit": "cells",
+                "description": "The basic unit of life, cell parts, and what each part does.",
+                "build": { "type": "cards", "category": "science-cells-unit1" }
+              }
+            },
+            {
+              "label": "Unit 2",
+              "title": "Human Body",
+              "deck": {
+                "unit": "human-body",
+                "description": "Body systems and the organs that keep them running.",
+                "build": { "type": "cards", "category": "science-human-body-unit2" }
+              }
+            },
+            {
+              "label": "Unit 3",
+              "title": "Genetics",
+              "deck": {
+                "unit": "genetics",
+                "description": "DNA, dominant and recessive traits, genotype vs. phenotype, and Punnett squares.",
+                "build": { "type": "cards", "category": "science-genetics-unit3" }
+              }
+            },
+            {
+              "label": "Unit 4",
+              "title": "Evolution",
+              "deck": {
+                "unit": "evolution",
+                "description": "Natural selection, adaptations, fossils, and extinction.",
+                "build": { "type": "cards", "category": "science-evolution-unit4" }
+              }
+            },
+            {
+              "label": "Unit 5",
+              "title": "Environmental Science",
+              "deck": {
+                "unit": "environmental-science",
+                "description": "Ecosystems, producers, food chains, resources, and pollution.",
+                "build": { "type": "cards", "category": "science-environmental-unit5" }
+              }
+            }
+          ]
+        },
+        {
+          "subject": "french",
+          "summary": "Color words, with more units coming.",
+          "blurb": "Communication, colors, food, and school, starting with Colors.",
+          "units": [
+            { "label": "Unit 1", "title": "Communication" },
+            {
+              "label": "Unit 2",
+              "title": "Colors",
+              "deck": {
+                "unit": "colors",
+                "description": "Twelve color words — French to English, English to French, and short example phrases.",
+                "build": { "type": "cards", "category": "french-colors-unit2" }
+              }
+            },
+            { "label": "Unit 3", "title": "Food" },
+            { "label": "Unit 4", "title": "School" }
+          ]
+        },
+        {
+          "subject": "geography",
+          "summary": "Name countries on the map, region by region.",
+          "blurb": "Countries of the world on the map, one region per unit.",
+          "units": [
+            {
+              "label": "Unit 1",
+              "title": "North America: Continental North & Central",
+              "deck": {
+                "unit": "north-america-continental",
+                "description": "Name all {count} countries of continental North and Central America from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-north-america-continental"] }
+              }
+            },
+            {
+              "label": "Unit 2",
+              "title": "North America: Island Nations",
+              "deck": {
+                "unit": "north-america-islands",
+                "description": "Name all {count} countries of the Caribbean island nations from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-north-america-islands"] }
+              }
+            },
+            {
+              "label": "Unit 3",
+              "title": "South America",
+              "deck": {
+                "unit": "south-america",
+                "description": "Name all {count} countries of South America from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-south-america"] }
+              }
+            },
+            {
+              "label": "Unit 4",
+              "title": "Europe: West",
+              "deck": {
+                "unit": "europe-west",
+                "description": "Name all {count} countries of Western Europe from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-europe-west"] }
+              }
+            },
+            {
+              "label": "Unit 5",
+              "title": "Europe: East",
+              "deck": {
+                "unit": "europe-east",
+                "description": "Name all {count} countries of Eastern Europe from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-europe-east"] }
+              }
+            },
+            {
+              "label": "Unit 6",
+              "title": "Africa: North",
+              "deck": {
+                "unit": "africa-north",
+                "description": "Name all {count} countries of North Africa from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-africa-north"] }
+              }
+            },
+            {
+              "label": "Unit 7",
+              "title": "Africa: Central",
+              "deck": {
+                "unit": "africa-central",
+                "description": "Name all {count} countries of Central Africa from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-africa-central"] }
+              }
+            },
+            {
+              "label": "Unit 8",
+              "title": "Africa: South",
+              "deck": {
+                "unit": "africa-south",
+                "description": "Name all {count} countries of Southern Africa from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-africa-south"] }
+              }
+            },
+            {
+              "label": "Unit 9",
+              "title": "Asia: West",
+              "deck": {
+                "unit": "asia-west",
+                "description": "Name all {count} countries of West Asia from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-asia-west"] }
+              }
+            },
+            {
+              "label": "Unit 10",
+              "title": "Asia: East",
+              "deck": {
+                "unit": "asia-east",
+                "description": "Name all {count} countries of East Asia from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-asia-east"] }
+              }
+            },
+            {
+              "label": "Unit 11",
+              "title": "Oceania",
+              "deck": {
+                "unit": "oceania",
+                "description": "Name all {count} countries of Oceania from a blank map.",
+                "build": { "type": "countries", "categories": ["geography-oceania"] }
+              }
+            },
+            {
+              "label": "Final",
+              "title": "All Countries",
+              "deck": {
+                "unit": "final",
+                "description": "All {count} countries in random order, mixed across every continent.",
+                "build": {
+                  "type": "countries",
+                  "categories": [
+                    "geography-north-america-continental",
+                    "geography-north-america-islands",
+                    "geography-south-america",
+                    "geography-europe-west",
+                    "geography-europe-east",
+                    "geography-africa-north",
+                    "geography-africa-central",
+                    "geography-africa-south",
+                    "geography-asia-west",
+                    "geography-asia-east",
+                    "geography-oceania"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "mathRules": {
+    "wholeNumberOperations": {
+      "deckSize": 20,
+      "grades": {
+        "2": {
+          "range": { "min": 0, "max": 100 },
+          "negativeChance": 0,
+          "operations": {
+            "add": { "operand": [{ "min": 1, "max": 9, "weight": 0.3 }, { "min": 10, "max": 99, "weight": 0.7 }] },
+            "sub": {
+              "operand": [{ "min": 1, "max": 9, "weight": 0.3 }, { "min": 10, "max": 99, "weight": 0.7 }],
+              "largerFirst": true
+            }
+          }
+        },
+        "3": {
+          "range": { "min": -1000, "max": 1000 },
+          "negativeChance": 0.3,
+          "operations": {
+            "add": {
+              "operand": [
+                { "min": 1, "max": 9, "weight": 0.2 },
+                { "min": 10, "max": 99, "weight": 0.4 },
+                { "min": 100, "max": 999, "weight": 0.4 }
+              ]
+            },
+            "sub": {
+              "operand": [
+                { "min": 1, "max": 9, "weight": 0.2 },
+                { "min": 10, "max": 99, "weight": 0.4 },
+                { "min": 100, "max": 999, "weight": 0.4 }
+              ]
+            },
+            "mul": { "operand": { "min": 2, "max": 12 } },
+            "div": { "divisor": { "min": 2, "max": 12 }, "quotient": { "min": 1, "max": 12 } }
+          }
+        }
+      }
+    },
+    "grade5": {
+      "deckSize": 20,
+      "mixed": { "multiplication": 1, "division": 1, "fractions": 1, "decimals": 1, "order-of-operations": 1 },
+      "multiplication": {
+        "shapes": [
+          { "weight": 0.3, "first": { "min": 12, "max": 99 }, "second": { "min": 12, "max": 99 } },
+          { "weight": 0.5, "first": { "min": 101, "max": 999 }, "second": { "min": 12, "max": 99 } },
+          { "weight": 0.2, "first": { "min": 1001, "max": 9999 }, "second": { "min": 3, "max": 9 } }
+        ]
+      },
+      "division": {
+        "divisor": [{ "min": 11, "max": 99, "weight": 0.7 }, { "min": 3, "max": 9, "weight": 0.3 }],
+        "remainderChance": 0.3,
+        "quotientMin": 10,
+        "dividendMax": 9999
+      },
+      "fractions": {
+        "problems": { "add-subtract": 0.6, "multiply": 0.4 },
+        "denominators": [2, 3, 4, 5, 6, 8, 10, 12],
+        "addChance": 0.5,
+        "wholeTimesFractionChance": 0.5,
+        "wholeFactor": { "min": 2, "max": 9 }
+      },
+      "decimals": {
+        "problems": { "add-subtract": 0.5, "power-of-ten": 0.25, "times-whole": 0.25 },
+        "addSubtract": {
+          "addChance": 0.5,
+          "places": [1, 2],
+          "first": { "min": 1, "max": 49 },
+          "second": { "min": 0, "max": 29 }
+        },
+        "powerOfTen": { "multiplyChance": 0.5, "powers": [10, 100, 1000], "places": [1, 2], "number": { "min": 0, "max": 99 } },
+        "timesWhole": { "places": [1, 2], "decimal": { "min": 0, "max": 9 }, "whole": { "min": 2, "max": 9 } }
+      },
+      "orderOfOperations": {
+        "templates": {
+          "a + b × c": {
+            "weight": 1,
+            "numbers": { "a": { "min": 2, "max": 20 }, "b": { "min": 2, "max": 9 }, "c": { "min": 2, "max": 9 } }
+          },
+          "(a + b) × c": {
+            "weight": 1,
+            "numbers": { "a": { "min": 2, "max": 15 }, "b": { "min": 2, "max": 15 }, "c": { "min": 2, "max": 9 } }
+          },
+          "a − b × c": {
+            "weight": 1,
+            "numbers": { "b": { "min": 2, "max": 6 }, "c": { "min": 2, "max": 6 }, "leftover": { "min": 1, "max": 30 } }
+          },
+          "a × (b − c)": {
+            "weight": 1,
+            "numbers": { "a": { "min": 2, "max": 9 }, "c": { "min": 1, "max": 10 }, "difference": { "min": 2, "max": 10 } }
+          },
+          "a + b ÷ c": {
+            "weight": 1,
+            "numbers": { "a": { "min": 2, "max": 30 }, "c": { "min": 2, "max": 9 }, "quotient": { "min": 2, "max": 9 } }
+          },
+          "(a − b) ÷ c": {
+            "weight": 1,
+            "numbers": { "b": { "min": 2, "max": 20 }, "c": { "min": 2, "max": 9 }, "quotient": { "min": 2, "max": 9 } }
+          },
+          "a × b + c × d": {
+            "weight": 1,
+            "numbers": {
+              "a": { "min": 2, "max": 9 },
+              "b": { "min": 2, "max": 9 },
+              "c": { "min": 2, "max": 9 },
+              "d": { "min": 2, "max": 9 }
+            }
+          }
+        }
+      }
+    },
+    "decimalOperations": {
+      "deckSize": 50,
+      "operations": ["add", "sub", "mul", "div"],
+      "answer": { "min": 0.01, "max": 100 },
+      "wrongAnswerMax": 1000,
+      "unitChance": 0.5,
+      "units": ["money", "inches", "miles", "pounds", "liters"],
+      "bothDecimalChance": 0.4,
+      "decimalFirstChance": 0.5,
+      "decimalChance": 0.55,
+      "twoPlacesChance": 0.35,
+      "maxWhole": { "add": 9, "sub": 9, "mul": 6, "div": 9, "divisor": 8, "money": 12, "quotient": 8 },
+      "cleanQuotientChance": 0.65
+    }
+  },
+  "cards": [
+    { "question": "a", "answer": "a", "category": "sight-words-grade4", "acceptableTranscripts": ["hey"] },
+    { "question": "about", "answer": "about", "category": "sight-words-grade4" },
+    { "question": "all", "answer": "all", "category": "sight-words-grade4", "acceptableTranscripts": ["call"] },
+    { "question": "am", "answer": "am", "category": "sight-words-grade4", "acceptableTranscripts": ["a.m.", "a m"] },
+    { "question": "an", "answer": "an", "category": "sight-words-grade4" },
+    { "question": "and", "answer": "and", "category": "sight-words-grade4" },
+    { "question": "are", "answer": "are", "category": "sight-words-grade4" },
+    { "question": "as", "answer": "as", "category": "sight-words-grade4" },
+    { "question": "at", "answer": "at", "category": "sight-words-grade4" },
+    { "question": "be", "answer": "be", "category": "sight-words-grade4" },
+    { "question": "been", "answer": "been", "category": "sight-words-grade4" },
+    { "question": "but", "answer": "but", "category": "sight-words-grade4" },
+    { "question": "by", "answer": "by", "category": "sight-words-grade4" },
+    { "question": "called", "answer": "called", "category": "sight-words-grade4" },
+    { "question": "can", "answer": "can", "category": "sight-words-grade4" },
+    { "question": "come", "answer": "come", "category": "sight-words-grade4" },
+    { "question": "could", "answer": "could", "category": "sight-words-grade4" },
+    { "question": "day", "answer": "day", "category": "sight-words-grade4" },
+    { "question": "did", "answer": "did", "category": "sight-words-grade4" },
+    { "question": "do", "answer": "do", "category": "sight-words-grade4" },
+    { "question": "down", "answer": "down", "category": "sight-words-grade4" },
+    { "question": "easy", "answer": "easy", "category": "sight-words-grade4" },
+    { "question": "find", "answer": "find", "category": "sight-words-grade4" },
+    { "question": "first", "answer": "first", "category": "sight-words-grade4" },
+    { "question": "for", "answer": "for", "category": "sight-words-grade4", "acceptableTranscripts": ["four"] },
+    { "question": "from", "answer": "from", "category": "sight-words-grade4" },
+    { "question": "get", "answer": "get", "category": "sight-words-grade4" },
+    { "question": "go", "answer": "go", "category": "sight-words-grade4" },
+    { "question": "had", "answer": "had", "category": "sight-words-grade4" },
+    { "question": "has", "answer": "has", "category": "sight-words-grade4" },
+    { "question": "have", "answer": "have", "category": "sight-words-grade4" },
+    { "question": "he", "answer": "he", "category": "sight-words-grade4" },
+    { "question": "her", "answer": "her", "category": "sight-words-grade4" },
+    { "question": "him", "answer": "him", "category": "sight-words-grade4" },
+    { "question": "his", "answer": "his", "category": "sight-words-grade4" },
+    { "question": "how", "answer": "how", "category": "sight-words-grade4" },
+    { "question": "I", "answer": "I", "category": "sight-words-grade4" },
+    { "question": "if", "answer": "if", "category": "sight-words-grade4" },
+    { "question": "in", "answer": "in", "category": "sight-words-grade4" },
+    { "question": "into", "answer": "into", "category": "sight-words-grade4" },
+    { "question": "is", "answer": "is", "category": "sight-words-grade4" },
+    { "question": "it", "answer": "it", "category": "sight-words-grade4" },
+    { "question": "its like", "answer": "its like", "category": "sight-words-grade4" },
+    { "question": "long", "answer": "long", "category": "sight-words-grade4" },
+    { "question": "look", "answer": "look", "category": "sight-words-grade4" },
+    { "question": "made", "answer": "made", "category": "sight-words-grade4" },
+    { "question": "make", "answer": "make", "category": "sight-words-grade4" },
+    { "question": "many", "answer": "many", "category": "sight-words-grade4" },
+    { "question": "may", "answer": "may", "category": "sight-words-grade4" },
+    { "question": "more", "answer": "more", "category": "sight-words-grade4" },
+    { "question": "my", "answer": "my", "category": "sight-words-grade4" },
+    { "question": "no", "answer": "no", "category": "sight-words-grade4" },
+    { "question": "not", "answer": "not", "category": "sight-words-grade4" },
+    { "question": "now", "answer": "now", "category": "sight-words-grade4" },
+    { "question": "number", "answer": "number", "category": "sight-words-grade4" },
+    { "question": "of", "answer": "of", "category": "sight-words-grade4" },
+    { "question": "on", "answer": "on", "category": "sight-words-grade4" },
+    { "question": "one", "answer": "one", "category": "sight-words-grade4" },
+    { "question": "or", "answer": "or", "category": "sight-words-grade4" },
+    { "question": "other", "answer": "other", "category": "sight-words-grade4" },
+    { "question": "out", "answer": "out", "category": "sight-words-grade4" },
+    { "question": "part", "answer": "part", "category": "sight-words-grade4" },
+    { "question": "people", "answer": "people", "category": "sight-words-grade4" },
+    { "question": "said", "answer": "said", "category": "sight-words-grade4" },
+    { "question": "see", "answer": "see", "category": "sight-words-grade4" },
+    { "question": "she", "answer": "she", "category": "sight-words-grade4" },
+    { "question": "so", "answer": "so", "category": "sight-words-grade4" },
+    { "question": "some", "answer": "some", "category": "sight-words-grade4" },
+    { "question": "than", "answer": "than", "category": "sight-words-grade4" },
+    { "question": "that", "answer": "that", "category": "sight-words-grade4" },
+    { "question": "the", "answer": "the", "category": "sight-words-grade4" },
+    { "question": "their", "answer": "their", "category": "sight-words-grade4" },
+    { "question": "them", "answer": "them", "category": "sight-words-grade4" },
+    { "question": "then", "answer": "then", "category": "sight-words-grade4" },
+    { "question": "there", "answer": "there", "category": "sight-words-grade4" },
+    { "question": "these", "answer": "these", "category": "sight-words-grade4" },
+    { "question": "they", "answer": "they", "category": "sight-words-grade4" },
+    { "question": "this", "answer": "this", "category": "sight-words-grade4" },
+    { "question": "time", "answer": "time", "category": "sight-words-grade4" },
+    { "question": "to", "answer": "to", "category": "sight-words-grade4", "acceptableTranscripts": ["two", "too"] },
+    { "question": "two", "answer": "two", "category": "sight-words-grade4" },
+    { "question": "up", "answer": "up", "category": "sight-words-grade4" },
+    { "question": "use", "answer": "use", "category": "sight-words-grade4" },
+    { "question": "was", "answer": "was", "category": "sight-words-grade4" },
+    { "question": "water", "answer": "water", "category": "sight-words-grade4" },
+    { "question": "way", "answer": "way", "category": "sight-words-grade4" },
+    { "question": "we were", "answer": "we were", "category": "sight-words-grade4" },
+    { "question": "what", "answer": "what", "category": "sight-words-grade4" },
+    { "question": "when", "answer": "when", "category": "sight-words-grade4" },
+    { "question": "which", "answer": "which", "category": "sight-words-grade4" },
+    { "question": "who", "answer": "who", "category": "sight-words-grade4" },
+    { "question": "will", "answer": "will", "category": "sight-words-grade4" },
+    { "question": "with", "answer": "with", "category": "sight-words-grade4" },
+    { "question": "word", "answer": "word", "category": "sight-words-grade4" },
+    { "question": "would", "answer": "would", "category": "sight-words-grade4" },
+    { "question": "write", "answer": "write", "category": "sight-words-grade4" },
+    { "question": "you", "answer": "you", "category": "sight-words-grade4" },
+    { "question": "your", "answer": "your", "category": "sight-words-grade4" },
+    { "question": "2 + 3", "answer": "5", "category": "math-addition-grade4", "acceptedAnswers": ["five"] },
+    { "question": "4 + 4", "answer": "8", "category": "math-addition-grade4", "acceptedAnswers": ["eight"] },
+    { "question": "6 + 3", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "5 + 5", "answer": "10", "category": "math-addition-grade4", "acceptedAnswers": ["ten"] },
+    { "question": "7 + 2", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "8 + 1", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "3 + 6", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "4 + 5", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "2 + 7", "answer": "9", "category": "math-addition-grade4", "acceptedAnswers": ["nine"] },
+    { "question": "10 + 0", "answer": "10", "category": "math-addition-grade4", "acceptedAnswers": ["ten"] },
+    { "question": "3 + 4", "answer": "7", "category": "math-addition-grade4", "acceptedAnswers": ["seven"] },
+    { "question": "5 + 2", "answer": "7", "category": "math-addition-grade4", "acceptedAnswers": ["seven"] },
+    { "question": "6 + 4", "answer": "10", "category": "math-addition-grade4", "acceptedAnswers": ["ten"] },
+    { "question": "9 + 1", "answer": "10", "category": "math-addition-grade4", "acceptedAnswers": ["ten"] },
+    { "question": "What is the basic unit of life?", "answer": "Cell", "category": "science-cells-unit1", "choices": ["Atom", "Cell", "Tissue", "Organ"] },
+    { "question": "Which structure controls what enters and leaves the cell?", "answer": "Cell membrane", "category": "science-cells-unit1", "choices": ["Nucleus", "Cell wall", "Cell membrane", "Cytoplasm"] },
+    { "question": "What part of the cell contains DNA?", "answer": "Nucleus", "category": "science-cells-unit1", "choices": ["Mitochondria", "Nucleus", "Ribosome", "Vacuole"] },
+    { "question": "Which structure is found only in plant cells?", "answer": "Chloroplast", "category": "science-cells-unit1", "choices": ["Cell membrane", "Nucleus", "Chloroplast", "Mitochondria"] },
+    { "question": "What is the job of mitochondria?", "answer": "Produce energy", "category": "science-cells-unit1", "choices": ["Store water", "Make proteins", "Produce energy", "Control the cell"] },
+    { "question": "Which system carries oxygen and nutrients through the body?", "answer": "Circulatory system", "category": "science-human-body-unit2", "choices": ["Digestive system", "Circulatory system", "Nervous system", "Muscular system"] },
+    { "question": "What organ is the main control center of the body?", "answer": "Brain", "category": "science-human-body-unit2", "choices": ["Heart", "Brain", "Stomach", "Lungs"] },
+    { "question": "Which system helps you breathe?", "answer": "Respiratory system", "category": "science-human-body-unit2", "choices": ["Respiratory system", "Digestive system", "Skeletal system", "Immune system"] },
+    { "question": "What is the main function of the skeletal system?", "answer": "Provide structure and support", "category": "science-human-body-unit2", "choices": ["Pump blood", "Break down food", "Provide structure and support", "Send signals"] },
+    { "question": "Which organ pumps blood throughout the body?", "answer": "Heart", "category": "science-human-body-unit2", "choices": ["Brain", "Lungs", "Heart", "Liver"] },
+    { "question": "What carries genetic information?", "answer": "DNA", "category": "science-genetics-unit3", "choices": ["Water", "DNA", "Protein", "Sugar"] },
+    { "question": "A trait that shows up even if only one copy is present is called…", "answer": "Dominant", "category": "science-genetics-unit3", "choices": ["Recessive", "Dominant", "Neutral", "Hidden"] },
+    { "question": "What is a genotype?", "answer": "The genetic makeup", "category": "science-genetics-unit3", "choices": ["Physical appearance", "The genetic makeup", "A learned behavior", "A mutation"] },
+    { "question": "What is a phenotype?", "answer": "The visible trait", "category": "science-genetics-unit3", "choices": ["The genetic code", "The visible trait", "A chromosome", "A recessive gene"] },
+    { "question": "What tool shows possible genetic outcomes?", "answer": "Punnett square", "category": "science-genetics-unit3", "choices": ["Microscope", "Punnett square", "Thermometer", "Graph"] },
+    { "question": "What is evolution?", "answer": "Change in species over time", "category": "science-evolution-unit4", "choices": ["Sudden change in one organism", "Change in species over time", "A natural disaster", "A type of mutation"] },
+    { "question": "What is natural selection?", "answer": "Survival of organisms best suited to the environment", "category": "science-evolution-unit4", "choices": ["Random mating", "Survival of organisms best suited to the environment", "Choosing pets", "A type of fossil"] },
+    { "question": "What are adaptations?", "answer": "Traits that help organisms survive", "category": "science-evolution-unit4", "choices": ["Traits that help organisms survive", "Traits that harm organisms", "Traits learned in school", "Traits caused by weather"] },
+    { "question": "Fossils provide evidence of…", "answer": "Ancient life", "category": "science-evolution-unit4", "choices": ["Weather patterns", "Ancient life", "Modern technology", "Plant growth"] },
+    { "question": "What can cause a species to go extinct?", "answer": "Failure to survive environmental changes", "category": "science-evolution-unit4", "choices": ["Too much food", "Perfect adaptation", "Failure to survive environmental changes", "Extra DNA"] },
+    { "question": "What is an ecosystem?", "answer": "A community of living and nonliving things", "category": "science-environmental-unit5", "choices": ["A single organism", "A group of rocks", "A community of living and nonliving things", "A weather pattern"] },
+    { "question": "What do producers do?", "answer": "Make their own food", "category": "science-environmental-unit5", "choices": ["Eat other animals", "Break down dead matter", "Make their own food", "Hunt prey"] },
+    { "question": "What is a food chain?", "answer": "A path showing how energy moves", "category": "science-environmental-unit5", "choices": ["A list of animals", "A map of the Earth", "A path showing how energy moves", "A type of ecosystem"] },
+    { "question": "Which resource can be replaced naturally?", "answer": "Solar energy", "category": "science-environmental-unit5", "choices": ["Coal", "Oil", "Natural gas", "Solar energy"] },
+    { "question": "What is pollution?", "answer": "Harmful substances in the environment", "category": "science-environmental-unit5", "choices": ["Clean air", "Harmful substances in the environment", "Recycled materials", "Natural resources"] },
+    { "question": "How do you say \"red\" in French?", "answer": "rouge", "category": "french-colors-unit2", "choices": ["rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"r\": un ballon ___ (a red ball)." },
+    { "question": "What does \"rouge\" mean?", "answer": "red", "category": "french-colors-unit2", "choices": ["red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ballon rouge\"." },
+    { "question": "What does \"un ballon rouge\" mean?", "answer": "a red ball", "category": "french-colors-unit2", "choices": ["a red ball", "a blue ball", "a green ball", "a yellow ball", "a black ball", "a white ball", "a brown ball", "a gray ball", "an orange ball", "a pink ball", "a purple ball", "a beige ball"], "hint": "The color word is \"rouge\"." },
+    { "question": "How do you say \"blue\" in French?", "answer": "bleu", "category": "french-colors-unit2", "choices": ["bleu", "rouge", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": le ciel est ___ (the sky is blue)." },
+    { "question": "What does \"bleu\" mean?", "answer": "blue", "category": "french-colors-unit2", "choices": ["blue", "red", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"le ciel est bleu\"." },
+    { "question": "What does \"le ciel est bleu\" mean?", "answer": "the sky is blue", "category": "french-colors-unit2", "choices": ["the sky is blue", "the sky is red", "the sky is green", "the sky is yellow", "the sky is black", "the sky is white", "the sky is brown", "the sky is gray", "the sky is orange", "the sky is pink", "the sky is purple", "the sky is beige"], "hint": "The color word is \"bleu\"." },
+    { "question": "How do you say \"green\" in French?", "answer": "vert", "category": "french-colors-unit2", "choices": ["vert", "rouge", "bleu", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"v\": une feuille ___ (a green leaf)." },
+    { "question": "What does \"vert\" mean?", "answer": "green", "category": "french-colors-unit2", "choices": ["green", "red", "blue", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une feuille verte\"." },
+    { "question": "What does \"une feuille verte\" mean?", "answer": "a green leaf", "category": "french-colors-unit2", "choices": ["a green leaf", "a red leaf", "a blue leaf", "a yellow leaf", "a black leaf", "a white leaf", "a brown leaf", "a gray leaf", "an orange leaf", "a pink leaf", "a purple leaf", "a beige leaf"], "hint": "\"verte\" is \"vert\" + e because \"feuille\" is feminine." },
+    { "question": "How do you say \"yellow\" in French?", "answer": "jaune", "category": "french-colors-unit2", "choices": ["jaune", "rouge", "bleu", "vert", "noir", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"j\": un soleil ___ (a yellow sun)." },
+    { "question": "What does \"jaune\" mean?", "answer": "yellow", "category": "french-colors-unit2", "choices": ["yellow", "red", "blue", "green", "black", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un soleil jaune\"." },
+    { "question": "What does \"un soleil jaune\" mean?", "answer": "a yellow sun", "category": "french-colors-unit2", "choices": ["a yellow sun", "a red sun", "a blue sun", "a green sun", "a black sun", "a white sun", "a brown sun", "a gray sun", "an orange sun", "a pink sun", "a purple sun", "a beige sun"], "hint": "The color word is \"jaune\"." },
+    { "question": "How do you say \"black\" in French?", "answer": "noir", "category": "french-colors-unit2", "choices": ["noir", "rouge", "bleu", "vert", "jaune", "blanc", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"n\": un chat ___ (a black cat)." },
+    { "question": "What does \"noir\" mean?", "answer": "black", "category": "french-colors-unit2", "choices": ["black", "red", "blue", "green", "yellow", "white", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un chat noir\"." },
+    { "question": "What does \"un chat noir\" mean?", "answer": "a black cat", "category": "french-colors-unit2", "choices": ["a black cat", "a red cat", "a blue cat", "a green cat", "a yellow cat", "a white cat", "a brown cat", "a gray cat", "an orange cat", "a pink cat", "a purple cat", "a beige cat"], "hint": "The color word is \"noir\"." },
+    { "question": "How do you say \"white\" in French?", "answer": "blanc", "category": "french-colors-unit2", "choices": ["blanc", "rouge", "bleu", "vert", "jaune", "noir", "marron", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"b\": une chemise ___ (a white shirt)." },
+    { "question": "What does \"blanc\" mean?", "answer": "white", "category": "french-colors-unit2", "choices": ["white", "red", "blue", "green", "yellow", "black", "brown", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"une chemise blanche\"." },
+    { "question": "What does \"une chemise blanche\" mean?", "answer": "a white shirt", "category": "french-colors-unit2", "choices": ["a white shirt", "a red shirt", "a blue shirt", "a green shirt", "a yellow shirt", "a black shirt", "a brown shirt", "a gray shirt", "an orange shirt", "a pink shirt", "a purple shirt", "a beige shirt"], "hint": "\"blanche\" is the feminine form of \"blanc\" because \"chemise\" is feminine." },
+    { "question": "How do you say \"brown\" in French?", "answer": "marron", "category": "french-colors-unit2", "choices": ["marron", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "gris", "orange", "rose", "violet", "beige"], "hint": "It starts with \"m\": un café ___ (a brown coffee)." },
+    { "question": "What does \"marron\" mean?", "answer": "brown", "category": "french-colors-unit2", "choices": ["brown", "red", "blue", "green", "yellow", "black", "white", "gray", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un café marron\"." },
+    { "question": "What does \"un café marron\" mean?", "answer": "a brown coffee", "category": "french-colors-unit2", "choices": ["a brown coffee", "a red coffee", "a blue coffee", "a green coffee", "a yellow coffee", "a black coffee", "a white coffee", "a gray coffee", "an orange coffee", "a pink coffee", "a purple coffee", "a beige coffee"], "hint": "The color word is \"marron\"." },
+    { "question": "How do you say \"gray\" in French?", "answer": "gris", "category": "french-colors-unit2", "choices": ["gris", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "orange", "rose", "violet", "beige"], "hint": "It starts with \"g\": un ciel ___ (a gray sky)." },
+    { "question": "What does \"gris\" mean?", "answer": "gray", "category": "french-colors-unit2", "choices": ["gray", "red", "blue", "green", "yellow", "black", "white", "brown", "orange", "pink", "purple", "beige"], "hint": "You'd see it in \"un ciel gris\"." },
+    { "question": "What does \"un ciel gris\" mean?", "answer": "a gray sky", "category": "french-colors-unit2", "choices": ["a gray sky", "a red sky", "a blue sky", "a green sky", "a yellow sky", "a black sky", "a white sky", "a brown sky", "an orange sky", "a pink sky", "a purple sky", "a beige sky"], "hint": "The color word is \"gris\"." },
+    { "question": "How do you say \"orange\" in French?", "answer": "orange", "category": "french-colors-unit2", "choices": ["orange", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "rose", "violet", "beige"], "hint": "It starts with \"o\": une ___ (an orange fruit)." },
+    { "question": "What does \"orange\" mean?", "answer": "orange", "category": "french-colors-unit2", "choices": ["orange", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "pink", "purple", "beige"], "hint": "You'd see it in \"une orange\"." },
+    { "question": "What does \"une orange\" mean?", "answer": "an orange fruit", "category": "french-colors-unit2", "choices": ["an orange fruit", "a red fruit", "a blue fruit", "a green fruit", "a yellow fruit", "a black fruit", "a white fruit", "a brown fruit", "a gray fruit", "a pink fruit", "a purple fruit", "a beige fruit"], "hint": "Here \"orange\" is the fruit itself — same word as the color." },
+    { "question": "How do you say \"pink\" in French?", "answer": "rose", "category": "french-colors-unit2", "choices": ["rose", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "violet", "beige"], "hint": "It starts with \"r\": une fleur ___ (a pink flower)." },
+    { "question": "What does \"rose\" mean?", "answer": "pink", "category": "french-colors-unit2", "choices": ["pink", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "purple", "beige"], "hint": "You'd see it in \"une fleur rose\"." },
+    { "question": "What does \"une fleur rose\" mean?", "answer": "a pink flower", "category": "french-colors-unit2", "choices": ["a pink flower", "a red flower", "a blue flower", "a green flower", "a yellow flower", "a black flower", "a white flower", "a brown flower", "a gray flower", "an orange flower", "a purple flower", "a beige flower"], "hint": "The color word is \"rose\"." },
+    { "question": "How do you say \"purple\" in French?", "answer": "violet", "category": "french-colors-unit2", "choices": ["violet", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "beige"], "hint": "It starts with \"v\": des fleurs ___ (purple flowers)." },
+    { "question": "What does \"violet\" mean?", "answer": "purple", "category": "french-colors-unit2", "choices": ["purple", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "beige"], "hint": "You'd see it in \"des fleurs violettes\"." },
+    { "question": "What does \"des fleurs violettes\" mean?", "answer": "purple flowers", "category": "french-colors-unit2", "choices": ["purple flowers", "red flowers", "blue flowers", "green flowers", "yellow flowers", "black flowers", "white flowers", "brown flowers", "gray flowers", "orange flowers", "pink flowers", "beige flowers"], "hint": "\"violettes\" is \"violet\" made feminine and plural to match \"fleurs\"." },
+    { "question": "How do you say \"beige\" in French?", "answer": "beige", "category": "french-colors-unit2", "choices": ["beige", "rouge", "bleu", "vert", "jaune", "noir", "blanc", "marron", "gris", "orange", "rose", "violet"], "hint": "It starts with \"b\": un canapé ___ (a beige sofa)." },
+    { "question": "What does \"beige\" mean?", "answer": "beige", "category": "french-colors-unit2", "choices": ["beige", "red", "blue", "green", "yellow", "black", "white", "brown", "gray", "orange", "pink", "purple"], "hint": "You'd see it in \"un canapé beige\"." },
+    { "question": "What does \"un canapé beige\" mean?", "answer": "a beige sofa", "category": "french-colors-unit2", "choices": ["a beige sofa", "a red sofa", "a blue sofa", "a green sofa", "a yellow sofa", "a black sofa", "a white sofa", "a brown sofa", "a gray sofa", "an orange sofa", "a pink sofa", "a purple sofa"], "hint": "The color word is \"beige\"." },
+    { "question": "Which country is highlighted?", "answer": "Belize", "category": "geography-north-america-continental", "countryId": "084", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Canada", "category": "geography-north-america-continental", "countryId": "124", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Costa Rica", "category": "geography-north-america-continental", "countryId": "188", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "El Salvador", "category": "geography-north-america-continental", "countryId": "222", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Guatemala", "category": "geography-north-america-continental", "countryId": "320", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Honduras", "category": "geography-north-america-continental", "countryId": "340", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Mexico", "category": "geography-north-america-continental", "countryId": "484", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Nicaragua", "category": "geography-north-america-continental", "countryId": "558", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Panama", "category": "geography-north-america-continental", "countryId": "591", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "United States", "category": "geography-north-america-continental", "countryId": "840", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Antigua and Barbuda", "category": "geography-north-america-islands", "countryId": "028", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Bahamas", "category": "geography-north-america-islands", "countryId": "044", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Barbados", "category": "geography-north-america-islands", "countryId": "052", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Cuba", "category": "geography-north-america-islands", "countryId": "192", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Dominica", "category": "geography-north-america-islands", "countryId": "212", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Dominican Republic", "category": "geography-north-america-islands", "countryId": "214", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Grenada", "category": "geography-north-america-islands", "countryId": "308", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Haiti", "category": "geography-north-america-islands", "countryId": "332", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Jamaica", "category": "geography-north-america-islands", "countryId": "388", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Saint Kitts and Nevis", "category": "geography-north-america-islands", "countryId": "659", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Saint Lucia", "category": "geography-north-america-islands", "countryId": "662", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Saint Vincent and the Grenadines", "category": "geography-north-america-islands", "countryId": "670", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Trinidad and Tobago", "category": "geography-north-america-islands", "countryId": "780", "continent": "north-america" },
+    { "question": "Which country is highlighted?", "answer": "Argentina", "category": "geography-south-america", "countryId": "032", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Bolivia", "category": "geography-south-america", "countryId": "068", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Brazil", "category": "geography-south-america", "countryId": "076", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Chile", "category": "geography-south-america", "countryId": "152", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Colombia", "category": "geography-south-america", "countryId": "170", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Ecuador", "category": "geography-south-america", "countryId": "218", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Guyana", "category": "geography-south-america", "countryId": "328", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Paraguay", "category": "geography-south-america", "countryId": "600", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Peru", "category": "geography-south-america", "countryId": "604", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Suriname", "category": "geography-south-america", "countryId": "740", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Uruguay", "category": "geography-south-america", "countryId": "858", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Venezuela", "category": "geography-south-america", "countryId": "862", "continent": "south-america" },
+    { "question": "Which country is highlighted?", "answer": "Andorra", "category": "geography-europe-west", "countryId": "020", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Austria", "category": "geography-europe-west", "countryId": "040", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Belgium", "category": "geography-europe-west", "countryId": "056", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Denmark", "category": "geography-europe-west", "countryId": "208", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Finland", "category": "geography-europe-west", "countryId": "246", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "France", "category": "geography-europe-west", "countryId": "250", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Germany", "category": "geography-europe-west", "countryId": "276", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Iceland", "category": "geography-europe-west", "countryId": "352", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Ireland", "category": "geography-europe-west", "countryId": "372", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Italy", "category": "geography-europe-west", "countryId": "380", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Liechtenstein", "category": "geography-europe-west", "countryId": "438", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Luxembourg", "category": "geography-europe-west", "countryId": "442", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Malta", "category": "geography-europe-west", "countryId": "470", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Monaco", "category": "geography-europe-west", "countryId": "492", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Netherlands", "category": "geography-europe-west", "countryId": "528", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Norway", "category": "geography-europe-west", "countryId": "578", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Portugal", "category": "geography-europe-west", "countryId": "620", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "San Marino", "category": "geography-europe-west", "countryId": "674", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Spain", "category": "geography-europe-west", "countryId": "724", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Sweden", "category": "geography-europe-west", "countryId": "752", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Switzerland", "category": "geography-europe-west", "countryId": "756", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "United Kingdom", "category": "geography-europe-west", "countryId": "826", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Vatican City", "category": "geography-europe-west", "countryId": "336", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Albania", "category": "geography-europe-east", "countryId": "008", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Belarus", "category": "geography-europe-east", "countryId": "112", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Bosnia and Herzegovina", "category": "geography-europe-east", "countryId": "070", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Bulgaria", "category": "geography-europe-east", "countryId": "100", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Croatia", "category": "geography-europe-east", "countryId": "191", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Cyprus", "category": "geography-europe-east", "countryId": "196", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Czechia", "category": "geography-europe-east", "countryId": "203", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Estonia", "category": "geography-europe-east", "countryId": "233", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Greece", "category": "geography-europe-east", "countryId": "300", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Hungary", "category": "geography-europe-east", "countryId": "348", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Latvia", "category": "geography-europe-east", "countryId": "428", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Lithuania", "category": "geography-europe-east", "countryId": "440", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Moldova", "category": "geography-europe-east", "countryId": "498", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Montenegro", "category": "geography-europe-east", "countryId": "499", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "North Macedonia", "category": "geography-europe-east", "countryId": "807", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Poland", "category": "geography-europe-east", "countryId": "616", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Romania", "category": "geography-europe-east", "countryId": "642", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Russia", "category": "geography-europe-east", "countryId": "643", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Serbia", "category": "geography-europe-east", "countryId": "688", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Slovakia", "category": "geography-europe-east", "countryId": "703", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Slovenia", "category": "geography-europe-east", "countryId": "705", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Ukraine", "category": "geography-europe-east", "countryId": "804", "continent": "europe" },
+    { "question": "Which country is highlighted?", "answer": "Algeria", "category": "geography-africa-north", "countryId": "012", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Burkina Faso", "category": "geography-africa-north", "countryId": "854", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Cabo Verde", "category": "geography-africa-north", "countryId": "132", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Chad", "category": "geography-africa-north", "countryId": "148", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Djibouti", "category": "geography-africa-north", "countryId": "262", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Egypt", "category": "geography-africa-north", "countryId": "818", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Eritrea", "category": "geography-africa-north", "countryId": "232", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Ethiopia", "category": "geography-africa-north", "countryId": "231", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Gambia", "category": "geography-africa-north", "countryId": "270", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Libya", "category": "geography-africa-north", "countryId": "434", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Mali", "category": "geography-africa-north", "countryId": "466", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Mauritania", "category": "geography-africa-north", "countryId": "478", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Morocco", "category": "geography-africa-north", "countryId": "504", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Niger", "category": "geography-africa-north", "countryId": "562", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Senegal", "category": "geography-africa-north", "countryId": "686", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Somalia", "category": "geography-africa-north", "countryId": "706", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Sudan", "category": "geography-africa-north", "countryId": "729", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Tunisia", "category": "geography-africa-north", "countryId": "788", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Benin", "category": "geography-africa-central", "countryId": "204", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Burundi", "category": "geography-africa-central", "countryId": "108", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Cameroon", "category": "geography-africa-central", "countryId": "120", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Central African Republic", "category": "geography-africa-central", "countryId": "140", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Côte d'Ivoire", "category": "geography-africa-central", "countryId": "384", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Democratic Republic of the Congo", "category": "geography-africa-central", "countryId": "180", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Equatorial Guinea", "category": "geography-africa-central", "countryId": "226", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Gabon", "category": "geography-africa-central", "countryId": "266", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Ghana", "category": "geography-africa-central", "countryId": "288", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Guinea", "category": "geography-africa-central", "countryId": "324", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Guinea-Bissau", "category": "geography-africa-central", "countryId": "624", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Kenya", "category": "geography-africa-central", "countryId": "404", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Liberia", "category": "geography-africa-central", "countryId": "430", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Nigeria", "category": "geography-africa-central", "countryId": "566", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Republic of the Congo", "category": "geography-africa-central", "countryId": "178", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Rwanda", "category": "geography-africa-central", "countryId": "646", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "São Tomé and Príncipe", "category": "geography-africa-central", "countryId": "678", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Sierra Leone", "category": "geography-africa-central", "countryId": "694", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "South Sudan", "category": "geography-africa-central", "countryId": "728", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Togo", "category": "geography-africa-central", "countryId": "768", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Uganda", "category": "geography-africa-central", "countryId": "800", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Angola", "category": "geography-africa-south", "countryId": "024", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Botswana", "category": "geography-africa-south", "countryId": "072", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Comoros", "category": "geography-africa-south", "countryId": "174", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Eswatini", "category": "geography-africa-south", "countryId": "748", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Lesotho", "category": "geography-africa-south", "countryId": "426", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Madagascar", "category": "geography-africa-south", "countryId": "450", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Malawi", "category": "geography-africa-south", "countryId": "454", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Mauritius", "category": "geography-africa-south", "countryId": "480", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Mozambique", "category": "geography-africa-south", "countryId": "508", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Namibia", "category": "geography-africa-south", "countryId": "516", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Seychelles", "category": "geography-africa-south", "countryId": "690", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "South Africa", "category": "geography-africa-south", "countryId": "710", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Tanzania", "category": "geography-africa-south", "countryId": "834", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Zambia", "category": "geography-africa-south", "countryId": "894", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Zimbabwe", "category": "geography-africa-south", "countryId": "716", "continent": "africa" },
+    { "question": "Which country is highlighted?", "answer": "Afghanistan", "category": "geography-asia-west", "countryId": "004", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Armenia", "category": "geography-asia-west", "countryId": "051", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Azerbaijan", "category": "geography-asia-west", "countryId": "031", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Bahrain", "category": "geography-asia-west", "countryId": "048", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Georgia", "category": "geography-asia-west", "countryId": "268", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Iran", "category": "geography-asia-west", "countryId": "364", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Iraq", "category": "geography-asia-west", "countryId": "368", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Israel", "category": "geography-asia-west", "countryId": "376", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Jordan", "category": "geography-asia-west", "countryId": "400", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Kazakhstan", "category": "geography-asia-west", "countryId": "398", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Kuwait", "category": "geography-asia-west", "countryId": "414", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Kyrgyzstan", "category": "geography-asia-west", "countryId": "417", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Lebanon", "category": "geography-asia-west", "countryId": "422", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Oman", "category": "geography-asia-west", "countryId": "512", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Pakistan", "category": "geography-asia-west", "countryId": "586", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Palestine", "category": "geography-asia-west", "countryId": "275", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Qatar", "category": "geography-asia-west", "countryId": "634", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Saudi Arabia", "category": "geography-asia-west", "countryId": "682", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Syria", "category": "geography-asia-west", "countryId": "760", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Tajikistan", "category": "geography-asia-west", "countryId": "762", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Turkey", "category": "geography-asia-west", "countryId": "792", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Turkmenistan", "category": "geography-asia-west", "countryId": "795", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "United Arab Emirates", "category": "geography-asia-west", "countryId": "784", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Uzbekistan", "category": "geography-asia-west", "countryId": "860", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Yemen", "category": "geography-asia-west", "countryId": "887", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Bangladesh", "category": "geography-asia-east", "countryId": "050", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Bhutan", "category": "geography-asia-east", "countryId": "064", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Brunei", "category": "geography-asia-east", "countryId": "096", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Cambodia", "category": "geography-asia-east", "countryId": "116", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "China", "category": "geography-asia-east", "countryId": "156", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "India", "category": "geography-asia-east", "countryId": "356", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Indonesia", "category": "geography-asia-east", "countryId": "360", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Japan", "category": "geography-asia-east", "countryId": "392", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Laos", "category": "geography-asia-east", "countryId": "418", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Malaysia", "category": "geography-asia-east", "countryId": "458", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Maldives", "category": "geography-asia-east", "countryId": "462", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Mongolia", "category": "geography-asia-east", "countryId": "496", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Myanmar", "category": "geography-asia-east", "countryId": "104", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Nepal", "category": "geography-asia-east", "countryId": "524", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "North Korea", "category": "geography-asia-east", "countryId": "408", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Philippines", "category": "geography-asia-east", "countryId": "608", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Singapore", "category": "geography-asia-east", "countryId": "702", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "South Korea", "category": "geography-asia-east", "countryId": "410", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Sri Lanka", "category": "geography-asia-east", "countryId": "144", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Thailand", "category": "geography-asia-east", "countryId": "764", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Timor-Leste", "category": "geography-asia-east", "countryId": "626", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Vietnam", "category": "geography-asia-east", "countryId": "704", "continent": "asia" },
+    { "question": "Which country is highlighted?", "answer": "Australia", "category": "geography-oceania", "countryId": "036", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Fiji", "category": "geography-oceania", "countryId": "242", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Kiribati", "category": "geography-oceania", "countryId": "296", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Marshall Islands", "category": "geography-oceania", "countryId": "584", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Micronesia", "category": "geography-oceania", "countryId": "583", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Nauru", "category": "geography-oceania", "countryId": "520", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "New Zealand", "category": "geography-oceania", "countryId": "554", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Palau", "category": "geography-oceania", "countryId": "585", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Papua New Guinea", "category": "geography-oceania", "countryId": "598", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Samoa", "category": "geography-oceania", "countryId": "882", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Solomon Islands", "category": "geography-oceania", "countryId": "090", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Tonga", "category": "geography-oceania", "countryId": "776", "continent": "oceania" },
+    { "question": "Which country is highlighted?", "answer": "Vanuatu", "category": "geography-oceania", "countryId": "548", "continent": "oceania" },
+    { "question": "9 - 2", "answer": "7", "category": "math-subtraction", "acceptedAnswers": ["seven"] },
+    { "question": "10 - 3", "answer": "7", "category": "math-subtraction", "acceptedAnswers": ["seven"] },
+    { "question": "2 x 3", "answer": "6", "category": "math-multiplication", "acceptedAnswers": ["six"] },
+    { "question": "4 x 2", "answer": "8", "category": "math-multiplication", "acceptedAnswers": ["eight"] },
+    { "question": "A large animal with a trunk", "answer": "elephant", "category": "vocabulary-animals" },
+    { "question": "A farm bird that says cluck", "answer": "chicken", "category": "vocabulary-animals" },
+    { "question": "The star at the center of our solar system", "answer": "sun", "category": "vocabulary-science", "acceptedAnswers": ["the sun"] },
+    { "question": "Water in gas form", "answer": "vapor", "category": "vocabulary-science", "acceptedAnswers": ["water vapor"] }
+  ]
+}

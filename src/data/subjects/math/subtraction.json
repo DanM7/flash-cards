@@ -1,8 +1,0 @@
-{
-  "subject": "math",
-  "operation": "subtraction",
-  "cards": [
-    { "prompt": "9 - 2", "answers": ["7", "seven"] },
-    { "prompt": "10 - 3", "answers": ["7", "seven"] }
-  ]
-}

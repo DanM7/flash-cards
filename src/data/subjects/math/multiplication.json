@@ -1,8 +1,0 @@
-{
-  "subject": "math",
-  "operation": "multiplication",
-  "cards": [
-    { "prompt": "2 x 3", "answers": ["6", "six"] },
-    { "prompt": "4 x 2", "answers": ["8", "eight"] }
-  ]
-}
