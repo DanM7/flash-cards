@@ -1,14 +1,16 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import type { CountryMapRender, ViewBox } from "../data/subjects/geography/atlas";
   import type { Continent } from "../data/subjects/geography/atlas";
+  import { capitalAt, markerAt, viewBoxAt, type MapRender, type ViewBox } from "../data/subjects/geography/mapView";
 
-  export let countryId: string;
+  export let countryId = "";
   /** The zoomed-out view shows this whole continent. */
   export let continent: Continent | undefined = undefined;
+  /** Shows a U.S. state (by name) instead of a country; the zoomed-out view shows the whole country. */
+  export let state: string | undefined = undefined;
+  /** [longitude, latitude] of a capital city to mark with a dot. */
+  export let capital: [number, number] | undefined = undefined;
   export let cue = "Name this country";
-
-  type Atlas = typeof import("../data/subjects/geography/atlas");
 
   const WIDTH = 600;
   const HEIGHT = 400;
@@ -18,10 +20,9 @@
   const INTRO_DURATION_MS = 1400;
   const STEP_DURATION_MS = 450;
 
-  let atlas: Atlas | null = null;
-  let rendered: CountryMapRender | null = null;
+  let rendered: MapRender | null = null;
   let failed = false;
-  let requestedId = "";
+  let requestedKey = "";
   /** Where the zoom is headed, in ZOOM_STEP increments. */
   let zoomLevel = 0;
   /** What's on screen right now; eases toward zoomLevel. */
@@ -61,14 +62,34 @@
     animateTo(zoomLevel, STEP_DURATION_MS);
   };
 
-  const load = async (id: string, area: Continent | undefined) => {
-    requestedId = id;
+  const renderMap = async (
+    id: string,
+    area: Continent | undefined,
+    stateName: string | undefined,
+    point: [number, number] | undefined
+  ) => {
+    if (stateName) {
+      const usAtlas = await import("../data/subjects/geography/usAtlas");
+      return usAtlas.renderStateMap(stateName, WIDTH, HEIGHT, point);
+    }
+    const atlas = await import("../data/subjects/geography/atlas");
+    return atlas.renderCountryMap(id, WIDTH, HEIGHT, area);
+  };
+
+  const load = async (
+    id: string,
+    area: Continent | undefined,
+    stateName: string | undefined,
+    point: [number, number] | undefined
+  ) => {
+    const key = JSON.stringify([id, area, stateName, point]);
+    requestedKey = key;
     try {
-      atlas ??= await import("../data/subjects/geography/atlas");
-      if (requestedId !== id) {
+      const next = await renderMap(id, area, stateName, point);
+      if (requestedKey !== key) {
         return;
       }
-      rendered = atlas.renderCountryMap(id, WIDTH, HEIGHT, area);
+      rendered = next;
       failed = rendered == null;
       stopAnimation();
       zoomLevel = 0;
@@ -79,7 +100,7 @@
     }
   };
 
-  $: load(countryId, continent);
+  $: load(countryId, continent, state, capital);
 
   onDestroy(stopAnimation);
 
@@ -88,8 +109,14 @@
   $: frameAspect = frameWidth > 0 && frameHeight > 0 ? frameWidth / frameHeight : WIDTH / HEIGHT;
 
   let view: ViewBox | null = null;
-  $: view = atlas && rendered ? atlas.viewBoxAt(rendered, shownZoom, frameAspect) : null;
-  $: marker = atlas && rendered && view ? atlas.markerAt(rendered, view) : null;
+  $: view = rendered ? viewBoxAt(rendered, shownZoom, frameAspect) : null;
+  $: marker = rendered && view ? markerAt(rendered, view) : null;
+  $: capitalDot = rendered && view ? capitalAt(rendered, view) : null;
+  $: mapLabel = !state
+    ? "Blank map with one country highlighted"
+    : capital
+      ? "Blank U.S. map with one state highlighted and its capital marked"
+      : "Blank U.S. map with one state highlighted";
 </script>
 
 <article class="map-card">
@@ -101,7 +128,7 @@
         viewBox="{view.x} {view.y} {view.width} {view.height}"
         preserveAspectRatio="xMidYMid meet"
         role="img"
-        aria-label="Blank map with one country highlighted"
+        aria-label={mapLabel}
       >
         <path class="map-card__ocean" d={rendered.spherePath} />
         <path class="map-card__land" d={rendered.landPath} vector-effect="non-scaling-stroke" />
@@ -112,6 +139,15 @@
             cx={marker.cx}
             cy={marker.cy}
             r={marker.r}
+            vector-effect="non-scaling-stroke"
+          />
+        {/if}
+        {#if capitalDot}
+          <circle
+            class="map-card__capital"
+            cx={capitalDot.cx}
+            cy={capitalDot.cy}
+            r={capitalDot.r}
             vector-effect="non-scaling-stroke"
           />
         {/if}
@@ -220,6 +256,12 @@
     stroke: #c2410c;
     stroke-width: 1.5px;
     stroke-dasharray: 4 3;
+  }
+
+  .map-card__capital {
+    fill: #b91c1c;
+    stroke: #fff;
+    stroke-width: 1.5px;
   }
 
   .map-card__zoom {

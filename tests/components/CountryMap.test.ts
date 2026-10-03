@@ -111,6 +111,9 @@ describe("CountryMap", () => {
     render(CountryMap, { countryId: NAURU });
     const svg = await loadedMap();
     expect(svg.querySelector(".map-card__marker")?.getAttribute("r")).toBe("18");
+
+    await fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    expect(Number(svg.querySelector(".map-card__marker")?.getAttribute("r"))).toBeGreaterThan(18);
   });
 
   it("reports a country it can't draw", async () => {
@@ -141,6 +144,28 @@ describe("CountryMap", () => {
 
     await component.$set({ countryId: "999" });
     expect(await screen.findByText("Couldn't load the map.")).toBeInTheDocument();
+  });
+
+  it("draws a U.S. state", async () => {
+    installFrames();
+    setReducedMotion(true);
+    const { component } = render(CountryMap, { state: "Texas", cue: "Which state is highlighted?" });
+    const svg = await loadedMap();
+    expect(svg.getAttribute("aria-label")).toBe("Blank U.S. map with one state highlighted");
+    expect(viewBox(svg)).toEqual([0, 0, 600, 400]);
+    expect(svg.querySelector(".map-card__capital")).toBeNull();
+
+    await component.$set({ state: "Atlantis" });
+    expect(await screen.findByText("Couldn't load the map.")).toBeInTheDocument();
+  });
+
+  it("marks a state's capital", async () => {
+    installFrames();
+    setReducedMotion(true);
+    render(CountryMap, { state: "Texas", capital: [-97.743, 30.267] });
+    const svg = await loadedMap();
+    expect(svg.getAttribute("aria-label")).toBe("Blank U.S. map with one state highlighted and its capital marked");
+    expect(Number(svg.querySelector(".map-card__capital")?.getAttribute("r"))).toBe(5);
   });
 
   it("stops animating when removed", async () => {

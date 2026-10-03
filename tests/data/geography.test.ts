@@ -4,13 +4,11 @@ import {
   __testing,
   countryDistance,
   hasCountry,
-  markerAt,
   neighborIdsOf,
   renderCountryMap,
-  sphericalArea,
-  viewBoxAt,
-  type CountryMapRender
+  sphericalArea
 } from "../../src/data/subjects/geography/atlas";
+import { markerAt, viewBoxAt, type MapRender } from "../../src/data/subjects/geography/mapView";
 import type { DeckBuild } from "../../src/data/CardTypes";
 import { unitsFor } from "../../src/data/decks";
 import { createCountriesDeck } from "../../src/data/subjects/geography/countriesDeck";
@@ -41,7 +39,7 @@ describe("geography units", () => {
     expect(regionalUnits).toHaveLength(11);
     const ids = regionalUnits.flatMap((regions) => {
       expect(regions).toHaveLength(1);
-      return geography.regions[regions[0]].countries.map((country) => country.id);
+      return geography.worldRegions[regions[0]].countries.map((country) => country.id);
     });
     expect(ids).toHaveLength(194);
     expect(new Set(ids).size).toBe(194);
@@ -49,7 +47,7 @@ describe("geography units", () => {
   });
 
   it("name every country's capital", () => {
-    const countries = Object.values(geography.regions).flatMap((region) => region.countries);
+    const countries = Object.values(geography.worldRegions).flatMap((region) => region.countries);
     expect(new Set(countries.map((country) => country.name)).size).toBe(countries.length);
     for (const country of countries) {
       expect(country.capital.trim(), country.name).not.toBe("");
@@ -60,7 +58,7 @@ describe("geography units", () => {
   });
 
   it("include every region, with the final drawing from all of them", () => {
-    expect(regionalUnits.flat().sort()).toEqual(Object.keys(geography.regions).sort());
+    expect(regionalUnits.flat().sort()).toEqual(Object.keys(geography.worldRegions).sort());
     const final = unitsFor(flashcardData, 6, "geography")?.find((unit) => unit.label === "Final");
     expect(final?.option?.build).toEqual({ type: "countries" });
   });
@@ -70,7 +68,7 @@ describe("createCountriesDeck", () => {
   it("builds one map card per country with nearby wrong answers from the same deck", () => {
     for (const [region] of regionalUnits) {
       const deck = deckFor(region);
-      const { continent, countries } = geography.regions[region];
+      const { continent, countries } = geography.worldRegions[region];
       const idByName = new Map(countries.map((country) => [country.name, country.id]));
       const names = new Set(idByName.keys());
       expect(deck).toMatchObject({ subject: "geography", grade: 6, unitLabel: "Label" });
@@ -100,7 +98,7 @@ describe("createCountriesDeck", () => {
     expect(deckFor("atlantis").cards).toEqual([]);
     const withUnknown = {
       ...geography,
-      regions: {
+      worldRegions: {
         test: {
           continent: "europe" as const,
           countries: [
@@ -174,7 +172,7 @@ describe("renderCountryMap", () => {
   });
 
   it("draws the country separately from the rest of the land, inside a continent-wide overview", () => {
-    const render = renderCountryMap(FRANCE, 600, 400, "europe") as CountryMapRender;
+    const render = renderCountryMap(FRANCE, 600, 400, "europe") as MapRender;
     expect(render.width).toBe(600);
     expect(render.targetPath.length).toBeGreaterThan(0);
     expect(render.landPath.length).toBeGreaterThan(render.targetPath.length);
@@ -186,24 +184,24 @@ describe("renderCountryMap", () => {
   });
 
   it("uses the country view as the overview when there's no continent", () => {
-    const render = renderCountryMap(GREENLAND, 600, 400) as CountryMapRender;
+    const render = renderCountryMap(GREENLAND, 600, 400) as MapRender;
     expect(render.overview.width).toBeCloseTo(600 * 1.06, 5);
   });
 
   it("marks tiny countries until the view is zoomed in enough to see them", () => {
-    const nauru = renderCountryMap(NAURU, 600, 400, "oceania") as CountryMapRender;
+    const nauru = renderCountryMap(NAURU, 600, 400, "oceania") as MapRender;
     const marker = markerAt(nauru, viewBoxAt(nauru, 0, 1.5));
     expect(marker?.r).toBe(18);
     expect(marker?.cx).toBeCloseTo(300, 0);
     expect(marker?.cy).toBeCloseTo(200, 0);
     expect(markerAt(nauru, viewBoxAt(nauru, 1, 1.5))?.r).toBeGreaterThan(18);
 
-    const france = renderCountryMap(FRANCE, 600, 400) as CountryMapRender;
+    const france = renderCountryMap(FRANCE, 600, 400) as MapRender;
     expect(markerAt(france, viewBoxAt(france, 0, 1.5))).toBeNull();
   });
 
   it("keeps a country with parts far apart entirely in view, whatever the window's shape", () => {
-    const malaysia = renderCountryMap(MALAYSIA, 600, 400, "asia") as CountryMapRender;
+    const malaysia = renderCountryMap(MALAYSIA, 600, 400, "asia") as MapRender;
     const points = pathPoints(malaysia.targetPath);
     expect(points.length).toBeGreaterThan(100);
     for (const aspect of [1.5, 3]) {
@@ -218,7 +216,7 @@ describe("renderCountryMap", () => {
   });
 
   it("draws extra map to the sides, so wide windows aren't left blank", () => {
-    const france = renderCountryMap(FRANCE, 600, 400, "europe") as CountryMapRender;
+    const france = renderCountryMap(FRANCE, 600, 400, "europe") as MapRender;
     const xs = pathPoints(france.landPath).map(([x]) => x);
     expect(Math.min(...xs)).toBeLessThan(france.overview.x - france.overview.width / 4);
     expect(Math.max(...xs)).toBeGreaterThan(france.overview.x + france.overview.width * 1.25);
@@ -251,7 +249,7 @@ describe("country framing", () => {
 });
 
 describe("viewBoxAt", () => {
-  const render = (overview: CountryMapRender["overview"]): CountryMapRender => ({
+  const render = (overview: MapRender["overview"]): MapRender => ({
     width: 600,
     height: 400,
     overview,

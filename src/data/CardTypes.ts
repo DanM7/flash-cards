@@ -1,6 +1,7 @@
 import type { FrenchColors } from "./subjects/french/colors";
 import type { Continent } from "./subjects/geography/atlas";
 import type { Geography } from "./subjects/geography/countriesDeck";
+import type { UnitedStatesGeography } from "./subjects/geography/states";
 import type { CalculationPracticeRules, CalculationTopic } from "./subjects/math/calculationPractice";
 import type { DecimalOperationsRules } from "./subjects/math/decimalOperations";
 import type { Grade5Rules, Grade5Topic } from "./subjects/math/grade5";
@@ -39,10 +40,10 @@ export interface Card {
   /** Optional help text shown when the learner opens Hint. */
   hint?: string;
   /**
-   * Show a map with this country (ISO numeric id) highlighted instead of the prompt text,
-   * zoomed out to `continent` at the widest.
+   * Show a map instead of the prompt text: a country (ISO numeric id) highlighted and zoomed out to
+   * `continent` at the widest, or a U.S. state (by name) with its `capital` ([longitude, latitude]) marked.
    */
-  map?: { countryId: string; continent?: Continent };
+  map?: { countryId: string; continent?: Continent } | { state: string; capital?: [number, number] };
   /** BCP 47 language of the prompt when it isn't the default `appSettings.language`, e.g. "fr-FR". */
   lang?: string;
   acceptableTranscripts?: string[];
@@ -114,8 +115,12 @@ export type DeckBuild =
   | { type: "sightWords" }
   /** Three cards per color in `subjectData.french.colors`. */
   | { type: "frenchColors" }
-  /** Map cards for the countries in these `subjectData.geography.regions` (every region when left out). */
-  | { type: "countries"; regions?: string[] };
+  /** Map cards for the countries in these `subjectData.geography.worldRegions` (every region when left out). */
+  | { type: "countries"; regions?: string[] }
+  /** Map cards for the `subjectData.geography.unitedStates` in these regions (every state when left out). */
+  | { type: "states"; regions?: string[] }
+  /** Capital cards for the same states, each with its capital marked on the map. */
+  | { type: "stateCapitals"; regions?: string[] };
 
 export interface DeckEntry {
   /**
@@ -221,7 +226,6 @@ export interface PlayText {
   typingFinished: string;
 }
 
-/** Everything in flashcards.json. */
 /** How the app behaves and what it says, apart from any one subject's content. */
 export interface AppSettings {
   /** BCP 47 language every flashcard is in unless it sets its own `lang`. */
@@ -249,9 +253,10 @@ export interface SubjectData {
   /** `sightWords` maps a grade to its sight words. */
   reading: SubjectContent & { sightWords: Record<string, string[]> };
   french: SubjectContent & { colors: FrenchColors };
-  geography: SubjectContent & Geography;
+  geography: SubjectContent & Geography & UnitedStatesGeography;
 }
 
+/** Everything in flashcards.json. */
 export interface FlashcardData {
   appSettings: AppSettings;
   catalog: Catalog;

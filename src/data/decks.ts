@@ -14,6 +14,7 @@ import type {
 } from "./CardTypes";
 import { setCards, setSize } from "./cardSets";
 import { createFrenchColorsDeck } from "./subjects/french/colors";
+import { statesIn } from "./subjects/geography/states";
 import { createCalculationPracticeDeck } from "./subjects/math/calculationPractice";
 import { createDecimalOperationsDeck } from "./subjects/math/decimalOperations";
 import { createGrade5Deck } from "./subjects/math/grade5";
@@ -129,7 +130,7 @@ export function deckOptions(data: FlashcardData): DeckOption[] {
 const cardSetFor = (data: FlashcardData, option: DeckOption, key: string): CardSet | undefined =>
   data.subjectData[option.subject]?.cardSets?.[key];
 
-/** How many cards a deck of written cards, words, colors, or countries holds; 0 for generated math. */
+/** How many cards a deck of written cards, words, colors, countries, or states holds; 0 for generated math. */
 export function cardCount(option: DeckOption, data: FlashcardData): number {
   const { build } = option;
   switch (build.type) {
@@ -143,10 +144,13 @@ export function cardCount(option: DeckOption, data: FlashcardData): number {
     case "frenchColors":
       return data.subjectData.french.colors.colors.length * 3;
     case "countries":
-      return (build.regions ?? Object.keys(data.subjectData.geography.regions)).reduce(
-        (total, key) => total + (data.subjectData.geography.regions[key]?.countries.length ?? 0),
+      return (build.regions ?? Object.keys(data.subjectData.geography.worldRegions)).reduce(
+        (total, key) => total + (data.subjectData.geography.worldRegions[key]?.countries.length ?? 0),
         0
       );
+    case "states":
+    case "stateCapitals":
+      return statesIn(data.subjectData.geography, build.regions).length;
     default:
       return 0;
   }
@@ -240,6 +244,20 @@ const buildDeck = async (option: DeckOption, data: FlashcardData): Promise<Subje
     case "countries":
       // The map data is large, so it only loads once a geography deck starts.
       return (await import("./subjects/geography/countriesDeck")).createCountriesDeck(
+        data.subjectData.geography,
+        build.regions,
+        info,
+        wrongChoices
+      );
+    case "states":
+      return (await import("./subjects/geography/statesDeck")).createStatesDeck(
+        data.subjectData.geography,
+        build.regions,
+        info,
+        wrongChoices
+      );
+    case "stateCapitals":
+      return (await import("./subjects/geography/statesDeck")).createStateCapitalsDeck(
         data.subjectData.geography,
         build.regions,
         info,

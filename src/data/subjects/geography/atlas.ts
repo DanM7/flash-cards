@@ -3,6 +3,7 @@ import type { Feature, FeatureCollection, MultiPolygon, Polygon, Position } from
 import { feature, neighbors } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
 import worldData from "world-atlas/countries-50m.json";
+import { MAX_WINDOW_ASPECT, fitAspect, type MapRender } from "./mapView";
 
 export type Continent = "north-america" | "south-america" | "europe" | "africa" | "asia" | "oceania";
 
@@ -31,12 +32,6 @@ const CONTEXT_ZOOM = 0.45;
 const NEARBY_LAND_KM = 300;
 /** Landmasses at least this share of the mainland's size stay in view wherever they are (both halves of Malaysia). */
 const MAJOR_LAND_SHARE = 0.4;
-/**
- * Widest map window (width ÷ height) the drawn area covers, so a short window shows more map rather than cropping
- * it. The window is never taller than 3:2. Wider windows still show the whole country, with blank edges when
- * zoomed out to the continent.
- */
-const MAX_WINDOW_ASPECT = 3;
 /** Tiny countries still show at least this much of the globe... */
 const MIN_SPAN_DEGREES = 12;
 /** ...and enough to reach the nearest sizable landmass, up to this cap. */
@@ -44,9 +39,6 @@ const MAX_SPAN_DEGREES = 60;
 const NEAREST_LAND_FACTOR = 2.2;
 /** Landmasses of at least ~10,000 km² (in steradians) count as recognizable context. */
 const SIZABLE_LAND_SR = 10_000 / EARTH_RADIUS_KM ** 2;
-/** Countries whose main landmass is smaller than this (in px) also get a circle so they can be spotted. */
-const MARKER_THRESHOLD_PX = 20;
-const MARKER_RADIUS_PX = 18;
 
 const indexesById = new Map<string, number[]>();
 features.forEach((country, index) => {
@@ -204,39 +196,6 @@ const framePoints = (continent: Continent): [number, number][] => {
   return points.map(([x, y]) => [x > 180 ? x - 360 : x, y]);
 };
 
-export interface ViewBox {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-export interface CountryMapRender {
-  /** Country view; paths are drawn at this zoom so it has full detail. */
-  width: number;
-  height: number;
-  /** Zoomed-out view of the whole continent, in the same coordinates. */
-  overview: ViewBox;
-  spherePath: string;
-  landPath: string;
-  targetPath: string;
-  /** Bounds of the country's main landmass, for deciding when it needs a circle. */
-  focus: ViewBox;
-  center: { x: number; y: number };
-}
-
-/** Grow a box to the given aspect ratio around its center. */
-const fitAspect = (box: ViewBox, aspect: number): ViewBox => {
-  const width = Math.max(box.width, box.height * aspect);
-  const height = width / aspect;
-  return {
-    x: box.x + box.width / 2 - width / 2,
-    y: box.y + box.height / 2 - height / 2,
-    width,
-    height
-  };
-};
-
 /**
  * Blank map centered on the country's main landmass, with the country's shapes kept separate for highlighting.
  * The overview takes in `continent` when one is given.
@@ -246,7 +205,7 @@ export const renderCountryMap = (
   width: number,
   height: number,
   continent?: Continent
-): CountryMapRender | null => {
+): MapRender | null => {
   const indexes = indexesById.get(id);
   if (!indexes) {
     return null;
@@ -345,27 +304,4 @@ export const renderCountryMap = (
   };
 };
 
-/**
- * View box `zoomOut` of the way (0 = country, 1 = continent), shaped to the map window (`aspect` =
- * width ÷ height) by showing more map, so nothing in the zoom's frame is ever cropped. Width changes
- * geometrically so each step feels like the same amount of zoom; the center pans in step with the width.
- */
-export const viewBoxAt = (render: CountryMapRender, zoomOut: number, aspect: number): ViewBox => {
-  const { overview } = render;
-  const width = render.width * (overview.width / render.width) ** zoomOut;
-  const height = (width * render.height) / render.width;
-  const pan = overview.width === render.width ? zoomOut : (width - render.width) / (overview.width - render.width);
-  const centerX = render.width / 2 + (overview.x + overview.width / 2 - render.width / 2) * pan;
-  const centerY = render.height / 2 + (overview.y + overview.height / 2 - render.height / 2) * pan;
-  return fitAspect({ x: centerX - width / 2, y: centerY - height / 2, width, height }, aspect);
-};
-
 export const __testing = { bodyOf: (id: string) => countryBody(indexesById.get(id) as number[]) };
-
-/** Circle (in map coordinates) around countries too small to spot at this view, or null. */
-export const markerAt = (render: CountryMapRender, view: ViewBox): { cx: number; cy: number; r: number } | null => {
-  const pxPerUnit = render.width / view.width;
-  const tiny =
-    render.focus.width * pxPerUnit < MARKER_THRESHOLD_PX && render.focus.height * pxPerUnit < MARKER_THRESHOLD_PX;
-  return tiny ? { cx: render.center.x, cy: render.center.y, r: MARKER_RADIUS_PX / pxPerUnit } : null;
-};

@@ -19,7 +19,7 @@ export interface Geography {
   nearbyCountries: number;
   /** Asked on every map card. */
   question: string;
-  regions: Record<string, GeographyRegion>;
+  worldRegions: Record<string, GeographyRegion>;
 }
 
 interface Country {
@@ -57,7 +57,7 @@ const buildHint = (country: Country, deckIds: Set<string>, nameById: Map<string,
 };
 
 /**
- * One map card per country in `regions` (every region when left out). Hints can name a bordering
+ * One map card per country in these `worldRegions` (every region when left out). Hints can name a bordering
  * country from any region, but prefer ones in the same deck.
  */
 export const createCountriesDeck = (
@@ -66,10 +66,10 @@ export const createCountriesDeck = (
   info: DeckInfo,
   wrongChoices: number
 ): GeographyDeck => {
-  const allCountries = Object.values(geography.regions).flatMap(countriesIn);
+  const allCountries = Object.values(geography.worldRegions).flatMap(countriesIn);
   const nameById = new Map(allCountries.map((country) => [country.id, country.name]));
-  const countries = (regions ?? Object.keys(geography.regions))
-    .flatMap((key) => (geography.regions[key] ? countriesIn(geography.regions[key]) : []))
+  const countries = (regions ?? Object.keys(geography.worldRegions))
+    .flatMap((key) => (geography.worldRegions[key] ? countriesIn(geography.worldRegions[key]) : []))
     .filter((country) => hasCountry(country.id));
   const deckIds = new Set(countries.map((country) => country.id));
 

@@ -355,11 +355,7 @@
             <!-- Stays laid out (just hidden) while paused so the PAUSED card matches its size. -->
             <div class="fc-play__question" class:fc-play__question--hidden={paused} aria-hidden={paused}>
               {#if currentCard.map}
-                <CountryMap
-                  countryId={currentCard.map.countryId}
-                  continent={currentCard.map.continent}
-                  cue={currentCard.prompt}
-                />
+                <CountryMap {...currentCard.map} cue={currentCard.prompt} />
               {:else if listen}
                 <ListenCard
                   text={currentCard.prompt}

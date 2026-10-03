@@ -15,7 +15,7 @@ npm test         # run the unit tests once
 npm run coverage # run the tests with a coverage report
 ```
 
-Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `topojson-client`, and `world-atlas`.
+Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `topojson-client`, `world-atlas`, and `us-atlas`.
 
 ## What's in it
 
@@ -28,6 +28,7 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | 3rd | Reading | Vocabulary (hear a word, find it among look-alikes) |
 | 4th | Reading | Speech & Typing (sight words, typing or microphone), Vocabulary (hear a word, find it among look-alikes) |
 | 4th | Math | Addition Facts (typing or microphone) |
+| 4th | Geography | States, State Capitals (see below) |
 | 5th | Math | Multi-Digit Multiplication, Long Division (with remainders), Fractions (unlike denominators, multiplying), Decimals, Order of Operations, Mixed Review |
 | 6th | Math | Unit 0: Calculation Practice (simplifying fractions, greatest common factor, least common multiple); Unit 1: Decimal Operations, one decimal and one whole number (88.88 ÷ 4), including money and measurement (Units 2–10 listed as coming soon) |
 | 6th | Science | Cells, Human Body, Genetics, Evolution, Environmental Science |
@@ -64,6 +65,15 @@ All 194 countries are split into units:
 | 10 | Asia: East | 22 |
 | 11 | Oceania | 13 |
 | Final | All Countries, in random order across every continent | 194 |
+
+### 4th grade Geography
+
+The same blank map, of the United States (Alaska and Hawaii inset, as on most U.S. maps), with the same zoom buttons.
+
+- **States** highlights one state and asks which it is. Wrong answers are the nearest states; hints give the first letter and a couple of bordering states.
+- **State Capitals** highlights a state, marks its capital with a red dot, and asks for the capital. Wrong answers are the capitals of nearby states.
+- Small states like Rhode Island stay zoomed out enough to show their neighbors, with a dashed circle around them.
+- Each state belongs to one of five regions (Northeast, Southeast, Midwest, Southwest, West), so a deck can quiz one region at a time. Both decks cover all 50 states for now.
 
 ### Playing a multiple-choice deck
 
@@ -122,7 +132,7 @@ src/
   data/subjects/
     math/                     grade 2–3, 5, and 6 generators; rules.ts has the shared rule shapes and random draws
     french/                   the colors deck builder (colors.ts)
-    geography/                map rendering (atlas.ts) and the country deck builder (countriesDeck.ts)
+    geography/                map rendering (atlas.ts for the world, usAtlas.ts for the U.S., mapView.ts shared) and the deck builders (countriesDeck.ts, statesDeck.ts)
   nlp/                        speech recognition, spoken-answer matching, and reading words aloud
 ```
 
@@ -164,7 +174,7 @@ Three subjects also have their own compact formats in `subjectData`:
 
 - `reading.sightWords`: a list of words per grade, like `"4": ["a", "about", ...]`. Each word is its own question and answer.
 - `french.colors`: each color's French and English word, a short French `phrase` using it, and that phrase in English with the color left out (`"a {color} ball"`). Each color makes three cards (English to French, French to English, and what the phrase means) worded by `templates`. Wrong answers are other colors plus the non-color words in `additionalIncorrectAnswers` (French word → English word, like `"crayon": "pencil"`); phrase cards swap other colors into the same phrase. `phraseHint` replaces a phrase card's usual hint, for feminine forms.
-- `geography`: the `question` asked on every map card, `nearbyCountries` (how many of the closest countries wrong answers come from), and `regions`, each with the `continent` the map zooms out to (`north-america`, `south-america`, `europe`, `africa`, `asia`, or `oceania`) and its `countries`, each `{ "name": "France", "id": "250", "capital": "Paris" }` where `id` is the ISO 3166-1 numeric code the map data uses. Capitals aren't used by any deck yet.
+- `geography`: the `question` asked on every map card, `nearbyCountries` (how many of the closest countries wrong answers come from), and `worldRegions`, each with the `continent` the map zooms out to (`north-america`, `south-america`, `europe`, `africa`, `asia`, or `oceania`) and its `countries`, each `{ "name": "France", "id": "250", "capital": "Paris" }` where `id` is the ISO 3166-1 numeric code the map data uses. Country capitals aren't used by any deck yet. For the U.S.: `stateQuestion` and `capitalQuestion` ("{state}" becomes the state's name), `nearbyStates`, and `unitedStates`, each `{ "name": "Texas", "capital": "Austin", "region": "southwest", "capitalCoordinates": [-97.743, 30.267] }` with the capital's [longitude, latitude] for the map dot. Regions are `northeast`, `southeast`, `midwest`, `southwest`, and `west`.
 
 #### Math rules
 
@@ -212,7 +222,8 @@ Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, 
   - `{ "type": "grade5", "topic": "fractions" }`: generated 5th grade math (`multiplication`, `division`, `fractions`, `decimals`, `order-of-operations`, or `mixed`).
   - `{ "type": "decimalOperations" }`: generated 6th grade decimal operations.
   - `{ "type": "calculationPractice" }`: generated fraction-simplifying, greatest common factor, and least common multiple problems, mixed. Add `"topic": "simplify"`, `"gcf"`, or `"lcm"` for just one.
-  - `{ "type": "countries", "regions": ["europe-west"] }`: map cards for every country in those geography regions, with nearby countries as wrong answers. Leave out `regions` for every region, as the geography Final does.
+  - `{ "type": "countries", "regions": ["europe-west"] }`: map cards for every country in those `worldRegions`, with nearby countries as wrong answers. Leave out `regions` for every region, as the geography Final does.
+  - `{ "type": "states", "regions": ["west"] }` and `{ "type": "stateCapitals", "regions": ["west"] }`: U.S. state map cards, or capital cards with the capital marked, for the states in those regions (every state when `regions` is left out).
 
 #### Play settings and wording
 
@@ -263,6 +274,6 @@ The original scaffold also includes child profiles (`src/profiles/`), progress, 
 
 ## Credits
 
-Map data from [world-atlas](https://github.com/topojson/world-atlas), based on [Natural Earth](https://www.naturalearthdata.com/).
+Map data from [world-atlas](https://github.com/topojson/world-atlas), based on [Natural Earth](https://www.naturalearthdata.com/), and [us-atlas](https://github.com/topojson/us-atlas), based on the U.S. Census Bureau's cartographic boundary files.
 
 © Dan Maguire

@@ -125,7 +125,9 @@ describe("deck catalog", () => {
     expect(grade4.map((entry) => [entry.id, entry.interaction])).toEqual([
       ["4-reading-sight-words", "voice-or-type"],
       ["4-reading-vocabulary", "multiple-choice"],
-      ["4-math-addition-facts", "voice-or-type"]
+      ["4-math-addition-facts", "voice-or-type"],
+      ["4-geography-states", "multiple-choice"],
+      ["4-geography-state-capitals", "multiple-choice"]
     ]);
   });
 
@@ -203,6 +205,10 @@ describe("deckDescription", () => {
     expect(deckDescription(option("6-geography-final"), flashcardData)).toBe(
       "All 194 countries in random order, mixed across every continent."
     );
+    expect(deckDescription(option("4-geography-states"), flashcardData)).toBe(
+      "Name all 50 states from a blank U.S. map."
+    );
+    expect(deckDescription(option("4-geography-state-capitals"), flashcardData)).toContain("50 states.");
   });
 
   it("leaves descriptions without a count alone", () => {
@@ -210,7 +216,7 @@ describe("deckDescription", () => {
     expect(deckDescription(cells, flashcardData)).toBe(cells.description);
   });
 
-  it("counts cards in sets, words, colors, and regions, skipping ones the file doesn't have", () => {
+  it("counts cards in sets, words, colors, regions, and states, skipping ones the file doesn't have", () => {
     const counted = (build: DeckOption["build"], grade = 4) =>
       cardCount({ ...option("4-reading-sight-words"), grade, build }, flashcardData);
     const { reading, french, geography } = flashcardData.subjectData;
@@ -228,8 +234,10 @@ describe("deckDescription", () => {
     expect(counted({ type: "sightWords" }, 9)).toBe(0);
     expect(counted({ type: "frenchColors" })).toBe(french.colors.colors.length * 3);
     expect(counted({ type: "countries", regions: ["oceania", "atlantis"] })).toBe(
-      geography.regions.oceania.countries.length
+      geography.worldRegions.oceania.countries.length
     );
+    expect(counted({ type: "states", regions: ["southwest", "atlantis"] })).toBe(4);
+    expect(counted({ type: "stateCapitals" })).toBe(50);
     expect(counted({ type: "grade5", topic: "order-of-operations" })).toBe(0);
   });
 });
