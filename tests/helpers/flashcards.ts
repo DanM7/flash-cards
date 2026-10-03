@@ -1,11 +1,10 @@
 import { vi } from "vitest";
-import data from "../../src/data/flashcards.json";
+import data from "../../../flash-cards-data/flashcards.json";
 import type { FlashcardData, MathRules } from "../../src/data/CardTypes";
 
-/** The real flashcards.json; the app itself only ever fetches it. */
+/** The real flashcards.json from the flash-cards-data repo next to this one; the app itself only ever fetches it. */
 export const flashcardData = data as unknown as FlashcardData;
-export const flashcards = flashcardData.cards;
-export const mathRules: MathRules = flashcardData.mathRules;
+export const mathRules: MathRules = flashcardData.subjectData.math;
 
 /** A deep copy of the math rules, safe to change in one test. */
 export const copyMathRules = (): MathRules => structuredClone(mathRules);

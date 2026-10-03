@@ -1,16 +1,20 @@
 import type {
+  CardSet,
   DeckBuild,
   DeckEntry,
   DeckInfo,
-  Flashcard,
   FlashcardData,
   Grade,
+  GradeKey,
   GradeSubject,
   InteractionMode,
   PlayText,
-  SubjectDeck
+  SubjectDeck,
+  UnitEntry
 } from "./CardTypes";
-import { cardsIn, flashcardsIn } from "./fromFlashcards";
+import { setCards, setSize } from "./cardSets";
+import { createFrenchColorsDeck } from "./subjects/french/colors";
+import { createCalculationPracticeDeck } from "./subjects/math/calculationPractice";
 import { createDecimalOperationsDeck } from "./subjects/math/decimalOperations";
 import { createGrade5Deck } from "./subjects/math/grade5";
 import { createWholeNumberDeck } from "./subjects/math/wholeNumberOperations";
@@ -20,7 +24,7 @@ export interface DeckOption {
   /** `{grade}-{subject}-{unit}`, unique across the catalog. */
   id: string;
   unit: string;
-  grade: number;
+  grade: GradeKey;
   gradeLabel: string;
   /** Key in the catalog's `subjects`. */
   subject: string;
@@ -29,8 +33,6 @@ export interface DeckOption {
   title: string;
   badge: string;
   description: string;
-  /** flashcards.json categories the deck draws from. */
-  categories: string[];
   interaction: InteractionMode;
   build: DeckBuild;
 }
@@ -42,28 +44,44 @@ export interface UnitView {
   option: DeckOption | null;
 }
 
+/** A unit with its label worked out: "Unit 1", "Unit 2", ... unless it names its own. */
+interface LabeledUnit {
+  label: string;
+  title: string;
+  deck?: Omit<DeckEntry, "title">;
+}
+
+const labeled = (units: UnitEntry[]): LabeledUnit[] => {
+  let number = 0;
+  return units.map((unit) => {
+    const entry = typeof unit === "string" ? { title: unit } : unit;
+    if (entry.label) {
+      return { ...entry, label: entry.label };
+    }
+    number += 1;
+    return { ...entry, label: `Unit ${number}` };
+  });
+};
+
 export const subjectLabelFor = (data: FlashcardData, subject: string): string =>
-  data.subjects[subject]?.label ?? subject;
+  data.catalog.subjects[subject]?.label ?? subject;
 
 /** Color name for a CSS modifier class, or "" when the subject has no color. */
-export const colorFor = (data: FlashcardData, subject: string): string => data.subjects[subject]?.color ?? "";
+export const colorFor = (data: FlashcardData, subject: string): string => data.catalog.subjects[subject]?.color ?? "";
 
-export const gradeFor = (data: FlashcardData, grade: number): Grade | undefined =>
-  data.grades.find((entry) => entry.grade === grade);
+export const gradeFor = (data: FlashcardData, grade: GradeKey): Grade | undefined =>
+  data.catalog.grades.find((entry) => entry.grade === grade);
 
 /** The subject step for grades that pick a subject first; undefined for grades that go straight to their decks. */
-export const subjectStepFor = (data: FlashcardData, grade: number): GradeSubject[] | undefined => {
+export const subjectStepFor = (data: FlashcardData, grade: GradeKey): GradeSubject[] | undefined => {
   const entry = gradeFor(data, grade);
   return entry?.pickSubject ? entry.subjects : undefined;
 };
 
-const categoriesOf = (build: DeckBuild): string[] =>
-  build.type === "cards" ? [build.category] : build.type === "countries" ? build.categories : [];
-
-const deckId = (grade: number, subject: string, unit: string) => `${grade}-${subject}-${unit}`;
+const deckId = (grade: GradeKey, subject: string, unit: string) => `${grade}-${subject}-${unit}`;
 
 const optionsOf = (data: FlashcardData): DeckOption[] =>
-  data.grades.flatMap((grade) =>
+  data.catalog.grades.flatMap((grade) =>
     grade.subjects.flatMap((entry) => {
       const subjectLabel = subjectLabelFor(data, entry.subject);
       const toOption = (
@@ -81,13 +99,12 @@ const optionsOf = (data: FlashcardData): DeckOption[] =>
         title,
         badge,
         description: deck.description,
-        categories: categoriesOf(deck.build),
         interaction: deck.interaction ?? "multiple-choice",
         build: deck.build
       });
       return [
         ...(entry.decks ?? []).map((deck) => toOption(deck, deck.title, subjectLabel)),
-        ...(entry.units ?? []).flatMap((unit) =>
+        ...labeled(entry.units ?? []).flatMap((unit) =>
           unit.deck
             ? [toOption(unit.deck, `${unit.label}: ${unit.title}`, `${subjectLabel} · ${unit.label}`, unit.label)]
             : []
@@ -108,15 +125,38 @@ export function deckOptions(data: FlashcardData): DeckOption[] {
   return options;
 }
 
-export function deckDescription(option: DeckOption, flashcards: Flashcard[]): string {
-  const count = option.categories.reduce(
-    (total, category) => total + flashcardsIn(flashcards, category).length,
-    0
-  );
-  return option.description.replace("{count}", String(count));
+/** A written card set from the deck subject's `cardSets`, if it has one by that key. */
+const cardSetFor = (data: FlashcardData, option: DeckOption, key: string): CardSet | undefined =>
+  data.subjectData[option.subject]?.cardSets?.[key];
+
+/** How many cards a deck of written cards, words, colors, or countries holds; 0 for generated math. */
+export function cardCount(option: DeckOption, data: FlashcardData): number {
+  const { build } = option;
+  switch (build.type) {
+    case "cards":
+      return build.sets.reduce((total, key) => {
+        const set = cardSetFor(data, option, key);
+        return total + (set ? setSize(set) : 0);
+      }, 0);
+    case "sightWords":
+      return data.subjectData.reading.sightWords[option.grade]?.length ?? 0;
+    case "frenchColors":
+      return data.subjectData.french.colors.colors.length * 3;
+    case "countries":
+      return (build.regions ?? Object.keys(data.subjectData.geography.regions)).reduce(
+        (total, key) => total + (data.subjectData.geography.regions[key]?.countries.length ?? 0),
+        0
+      );
+    default:
+      return 0;
+  }
 }
 
-export function getDecksForGrade(data: FlashcardData, grade: number): DeckOption[] {
+export function deckDescription(option: DeckOption, data: FlashcardData): string {
+  return option.description.replace("{count}", String(cardCount(option, data)));
+}
+
+export function getDecksForGrade(data: FlashcardData, grade: GradeKey): DeckOption[] {
   return deckOptions(data).filter((option) => option.grade === grade);
 }
 
@@ -125,10 +165,10 @@ export function getDeckOptionById(data: FlashcardData, id: string): DeckOption |
 }
 
 /** The units list for a grade's subject, or null when the subject lists plain decks. */
-export function unitsFor(data: FlashcardData, grade: number, subject: string): UnitView[] | null {
+export function unitsFor(data: FlashcardData, grade: GradeKey, subject: string): UnitView[] | null {
   const units = gradeFor(data, grade)?.subjects.find((entry) => entry.subject === subject)?.units;
   return units
-    ? units.map((unit) => ({
+    ? labeled(units).map((unit) => ({
         label: unit.label,
         title: unit.title,
         option: unit.deck ? getDeckOptionById(data, deckId(grade, subject, unit.deck.unit)) : null
@@ -157,33 +197,53 @@ const unitLabelOf = (option: DeckOption): string =>
 const buildDeck = async (option: DeckOption, data: FlashcardData): Promise<SubjectDeck> => {
   const { build } = option;
   const info: DeckInfo = { grade: option.grade, unitLabel: unitLabelOf(option) };
+  const { wrongChoices } = data.appSettings.multipleChoice;
   switch (build.type) {
-    case "cards":
+    case "cards": {
+      const choices = option.interaction === "multiple-choice" ? wrongChoices : undefined;
       return {
         subject: build.deckType ?? option.subject,
         grade: option.grade,
-        ...(option.unitName ? { unitLabel: option.title } : {}),
+        ...(option.unitName || option.interaction === "multiple-choice" ? { unitLabel: info.unitLabel } : {}),
         ...(build.operation ? { operation: build.operation } : {}),
         ...(build.listen ? { listen: true } : {}),
-        cards: cardsIn(data.cards, build.category, data.multipleChoice.wrongChoices)
+        cards: build.sets.flatMap((key) => {
+          const set = cardSetFor(data, option, key);
+          return set ? setCards(set, choices) : [];
+        })
       } as SubjectDeck;
+    }
+    case "sightWords":
+      return {
+        subject: "sight-words",
+        grade: option.grade,
+        cards: (data.subjectData.reading.sightWords[option.grade] ?? []).map((word) => ({ prompt: word, answers: [word] }))
+      };
+    case "frenchColors":
+      return createFrenchColorsDeck(data.subjectData.french.colors, wrongChoices, { grade: option.grade, unitLabel: option.title });
     case "wholeNumberOperations":
-      return createWholeNumberDeck(build.topic, data.mathRules.wholeNumberOperations, info);
+      return createWholeNumberDeck(build.topic, data.subjectData.math.wholeNumberOperations, info);
     case "grade5":
-      return createGrade5Deck(build.topic, data.mathRules.grade5, info);
+      return createGrade5Deck(build.topic, data.subjectData.math.grade5, info);
     case "decimalOperations":
       // The play screen already titles these "Decimal Operations", so the label is just the unit.
-      return createDecimalOperationsDeck(data.mathRules.decimalOperations, {
+      return createDecimalOperationsDeck(data.subjectData.math.decimalOperations, {
         grade: option.grade,
         unitLabel: option.unitName ?? info.unitLabel
       });
+    case "calculationPractice":
+      return createCalculationPracticeDeck(
+        data.subjectData.math.calculationPractice,
+        { grade: option.grade, unitLabel: option.unitName ?? info.unitLabel },
+        build.topic
+      );
     case "countries":
       // The map data is large, so it only loads once a geography deck starts.
       return (await import("./subjects/geography/countriesDeck")).createCountriesDeck(
-        data.cards,
-        build.categories,
+        data.subjectData.geography,
+        build.regions,
         info,
-        { wrongChoices: data.multipleChoice.wrongChoices, nearbyCountries: data.geography.nearbyCountries }
+        wrongChoices
       );
     default:
       throw new Error(`Unknown deck type "${(build as { type: string }).type}".`);
@@ -192,9 +252,9 @@ const buildDeck = async (option: DeckOption, data: FlashcardData): Promise<Subje
 
 /** Play screen wording for a deck: the defaults, overridden by its subject, then (for math) its operation. */
 export const playTextFor = (data: FlashcardData, deck: SubjectDeck): PlayText => ({
-  ...data.playText.default,
-  ...data.playText[deck.subject],
-  ...(deck.subject === "math" ? data.playText[deck.operation] : undefined)
+  ...data.appSettings.playText.default,
+  ...data.appSettings.playText[deck.subject],
+  ...(deck.subject === "math" ? data.appSettings.playText[deck.operation] : undefined)
 });
 
 /** A fresh deck each play: written cards from flashcards.json, or generated from its math rules. */

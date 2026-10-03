@@ -41,6 +41,10 @@ export class AnswerInterpreter {
       if (confusions?.length) {
         answers.push(...confusions);
       }
+      const spelled = Normalization.spellNumber(normalized);
+      if (spelled) {
+        answers.push(spelled);
+      }
     }
 
     return answers;

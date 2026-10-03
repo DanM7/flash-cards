@@ -35,6 +35,8 @@ export const writeNav = (changes: Partial<NavState>, how: "push" | "replace") =>
   }
   if (how === "push") {
     history.pushState(null, "", url);
+    // A pushed entry is a new screen, which should start at its top, not wherever the last one was scrolled to.
+    window.scrollTo(0, 0);
   } else {
     history.replaceState(null, "", url);
   }

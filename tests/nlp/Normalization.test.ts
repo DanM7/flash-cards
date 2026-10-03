@@ -15,4 +15,17 @@ describe("Normalization", () => {
   it("normalizes answers, dropping blanks and duplicates", () => {
     expect(Normalization.normalizeAnswers(["Cat", "cat", "", "Dog"])).toEqual(["cat", "dog"]);
   });
+
+  it("spells whole numbers up to one hundred", () => {
+    expect(["0", "7", "13", "20", "42", "99", "100"].map(Normalization.spellNumber)).toEqual([
+      "zero",
+      "seven",
+      "thirteen",
+      "twenty",
+      "forty two",
+      "ninety nine",
+      "one hundred"
+    ]);
+    expect(["101", "3.5", "-2", "seven", ""].map(Normalization.spellNumber)).toEqual([null, null, null, null, null]);
+  });
 });

@@ -123,6 +123,13 @@
     writeNav({ mode: "", unit: "" }, "push");
   };
 
+  /** The house button: home opens on the grade list since the cleared URL names no grade. */
+  const goToStart = () => {
+    resetPlay();
+    view = "home";
+    writeNav({ grade: "", subject: "", mode: "", unit: "" }, "push");
+  };
+
   /** Browser back/forward: open whatever deck the URL names, or return home. */
   const syncFromUrl = () => {
     if (!data) {
@@ -163,18 +170,20 @@
           <MultipleChoiceMode
             deck={selectedDeck}
             {timed}
-            settings={data.multipleChoice}
+            settings={data.appSettings.multipleChoice}
             text={playTextFor(data, selectedDeck)}
-            language={data.language}
+            language={data.appSettings.language}
             on:back={backToHome}
+            on:home={goToStart}
           />
         {:else}
           <PlayRoute
             deck={selectedDeck}
             autoMic={useMicrophone}
-            settings={data.typingAndVoice}
+            settings={data.appSettings.typingAndVoice}
             text={playTextFor(data, selectedDeck)}
             on:back={backToHome}
+            on:home={goToStart}
           />
         {/if}
       {/key}
@@ -202,6 +211,11 @@
     height: 100vh;
     height: 100dvh;
     overflow-y: auto;
+    scrollbar-width: none;
+  }
+
+  .fc-shell--fit::-webkit-scrollbar {
+    display: none;
   }
 
   .fc-shell__main {

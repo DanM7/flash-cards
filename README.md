@@ -1,6 +1,6 @@
 # flash-cards
 
-A flash-card practice app for kids, covering 2nd through 6th grade. Pick a grade, choose a subject and unit, and work through shuffled cards in short rounds — multiple choice for most decks, typing or voice for the 4th grade decks.
+A flash-card practice app for kids, covering 2nd through 6th grade, plus a Computer Science track for grown-up study. Pick a grade, choose a subject and unit, and work through shuffled cards in short rounds — multiple choice for most decks, typing or voice for the 4th grade decks.
 
 Project summary: [dan-maguire.com/projects/flash-cards](https://dan-maguire.com/projects/flash-cards)
 
@@ -29,10 +29,12 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | 4th | Reading | Speech & Typing (sight words, typing or microphone), Vocabulary (hear a word, find it among look-alikes) |
 | 4th | Math | Addition Facts (typing or microphone) |
 | 5th | Math | Multi-Digit Multiplication, Long Division (with remainders), Fractions (unlike denominators, multiplying), Decimals, Order of Operations, Mixed Review |
-| 6th | Math | Unit 1: Decimal Operations, including money and measurement (Units 2–10 listed as coming soon) |
+| 6th | Math | Unit 0: Calculation Practice (simplifying fractions, greatest common factor, least common multiple); Unit 1: Decimal Operations, one decimal and one whole number (88.88 ÷ 4), including money and measurement (Units 2–10 listed as coming soon) |
 | 6th | Science | Cells, Human Body, Genetics, Evolution, Environmental Science |
 | 6th | French | Unit 1: Alphabet — letters read aloud in French, accents included; Unit 3: Colors — 12 color words, French ↔ English plus example phrases (Communication, Food, and School listed as coming soon) |
 | 6th | Geography | 11 regional country units plus a Final (see below) |
+| Computer Science | Angular | Beginner, Intermediate, Expert, Mastery (read a definition, pick the term) |
+| Computer Science | Azure Fundamentals | All Terms: 40 cloud, Azure service, security, and governance terms (read a definition, pick the term) |
 
 Math decks are generated fresh every time, so no two games are the same. Wrong answers are built from common mistakes — a forgotten carry, a misplaced decimal, a remainder that's too big — rather than random numbers. Every math card has a hint.
 
@@ -79,13 +81,15 @@ The word is never shown. It's read aloud with the browser's built-in speech (the
 
 ### 6th grade French Alphabet
 
-Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The deck covers A–Z plus é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç. If a letter sounds wrong on some device, change its `question` to spell the name differently.
+Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The deck covers A–Z (the `french-letters` set) plus é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç (`french-accented-letters`), and wrong answers are other letters from either set. If a letter sounds wrong on some device, change its question (the key in the set) to spell the name differently.
 
 ### 4th grade typing and voice
 
 Speech & Typing (the sight words) and Addition Facts accept a typed answer or a spoken one through the browser's speech recognition. With the microphone on it keeps listening between cards, and math answers can be said as digits or words ("7" or "seven").
 
 ### Navigation and links
+
+A house button at the top left of the panel goes straight back to the grade list from a grade or subject screen. It's hidden on the grade list itself. In a deck, the house sits in the header next to **← Back**, which returns to the deck list the deck came from.
 
 The URL always reflects where you are, with blank values when a step isn't chosen. This allows for easy bookmarking. For example:
 
@@ -111,41 +115,65 @@ src/
   modes/multiple-choice/      multiple-choice play screen
   components/                 FlashCard, ListenCard (read-aloud card), CountryMap, and shared UI
   services/                   flashcardService.ts loads flashcards.json at startup
-  data/flashcards.json        grades, subjects, decks, home screen text, math rules, and every written flashcard
-  data/fromFlashcards.ts      turns flashcards.json entries into playable cards
+  data/cardSets.ts            turns flashcards.json card sets into playable cards
+  data/wrongAnswers.ts        spreads wrong answers evenly across a deck
   data/decks.ts               reads the grade/subject/deck catalog and builds each deck when it starts
-  data/CardTypes.ts           card, deck, flashcard, and catalog types
+  data/CardTypes.ts           card, deck, card set, and catalog types
   data/subjects/
     math/                     grade 2–3, 5, and 6 generators; rules.ts has the shared rule shapes and random draws
+    french/                   the colors deck builder (colors.ts)
     geography/                map rendering (atlas.ts) and the country deck builder (countriesDeck.ts)
   nlp/                        speech recognition, spoken-answer matching, and reading words aloud
 ```
 
 ### Flashcard data
 
-Everything the home screen lists (grades, subjects, units, and decks), all written flashcards, and the rules for generated math decks live in `src/data/flashcards.json`. The app fetches the file when it starts, showing "Loading flashcards…" until it arrives, or an error with a **Try again** button if it can't load. In development it reads `/src/data/flashcards.json` from the Vite server. A deployed build reads the copy on GitHub (`REMOTE_URL` in `src/services/flashcardService.ts`), so changes to the file go live once they're pushed to `main`.
+Everything the home screen lists (grades, subjects, units, and decks), all written flashcards, and the rules for generated math decks live in `flashcards.json`, in its own repo: [DanM7/flash-cards-data](https://github.com/DanM7/flash-cards-data). Keeping the data separate means editing it never triggers a new site deploy.
+
+The app fetches the file when it starts, showing "Loading flashcards…" until it arrives, or an error with a **Try again** button if it can't load.
+
+- **Deployed:** the site reads the copy on GitHub (`REMOTE_URL` in `src/services/flashcardService.ts`), so changes go live within about 5 minutes of being pushed to the data repo's `main`, with no redeploy.
+- **Development:** check out the data repo next to this one (`../flash-cards-data/flashcards.json`). `npm run dev` serves that copy at `/flashcards.json`, so local edits show up on reload, and the tests read it too. `flash-cards.code-workspace` in the parent folder opens both repos together.
+- When a change needs new code and new data together (a new field or `build` type), deploy the site first if the old code would choke on the new data, or push the data first if the new code requires it.
+
+The file has three groups:
+
+- `appSettings`: the default card `language`, `home` screen text, play settings (`multipleChoice`, `typingAndVoice`), and play screen wording (`playText`).
+- `catalog`: what the menus offer: `subjects` (names and colors) and `grades` (each grade's subjects, units, and decks).
+- `subjectData`: each subject's content, keyed like `catalog.subjects` (`math`, `science`, `french`, `reading`, `geography`, `angular`, `azure-fundamentals`).
+
+Written cards live in their subject's `cardSets`, keyed by set name, like `subjectData.science.cardSets.cells`. Each set maps a question to its answer:
 
 ```json
-{
-  "cards": [
-    { "question": "2 + 3", "answer": "5", "category": "math-addition-grade4", "acceptedAnswers": ["five"] }
-  ]
+"cells": {
+  "additionalIncorrectAnswers": ["Atom", "Tissue", "Organ", "Ribosome"],
+  "cards": {
+    "What is the basic unit of life?": "Cell",
+    "What part of the cell contains DNA?": "Nucleus"
+  }
 }
 ```
 
-- `category` groups cards into decks (for example `science-cells-unit1`, or `geography-europe-west` for a geography unit). A deck names the categories it draws from.
-- Optional fields: `acceptedAnswers` (other answers that count), `choices` (multiple-choice options including the answer), `hint`, `countryId` (ISO numeric id for the map), `continent` (what the map zooms out to: `north-america`, `south-america`, `europe`, `africa`, `asia`, or `oceania`), `lang` (the card's language, below), and `acceptableTranscripts` (words speech recognition might hear instead, like "four" for "for").
-- Every card is in English (`"language": "en-US"` at the top of the file) unless it sets its own `lang`, like `"fr-FR"` for the French alphabet. The language picks the voice and pronunciation when a card is read aloud.
-- With more than four `choices`, the answer and three random wrong ones (`multipleChoice.wrongChoices`) are picked each play (the French cards use this).
-- A few cards (`math-subtraction`, `math-multiplication`) came from earlier data files and aren't used by any deck yet.
+- The key is what's shown and the value is what gets picked. The Angular sets are written definition → term (`"A stream of asynchronous values.": "Observable"`), so the choices are short terms.
+- An answer is a string, or an object with any of `answer` (left out, the question is the answer, as in vocabulary), `acceptedAnswers` (other answers that count), `incorrectAnswers`, and `hint`.
+- **Wrong answers** are the other cards' answers in the same set (or sets, for a deck built from several), plus the set's optional `additionalIncorrectAnswers`. They're picked fresh each play, spread so every answer shows up about equally often across the deck, and never include the card's own answer (ignoring case). A card with its own `incorrectAnswers` uses those instead; vocabulary does this, so wrong answers look alike but never sound the same.
+- Every card is in English (`appSettings.language`, `"en-US"`) unless its set has a `lang`, like `"fr-FR"` for the French alphabet. The language picks the voice and pronunciation when a card is read aloud.
+- Spoken and typed answers that are numbers also accept the number as words ("5" or "five", up to one hundred), and common speech mix-ups ("four" for "for") are handled in code, so neither needs listing.
+
+Three subjects also have their own compact formats in `subjectData`:
+
+- `reading.sightWords`: a list of words per grade, like `"4": ["a", "about", ...]`. Each word is its own question and answer.
+- `french.colors`: each color's French and English word, a short French `phrase` using it, and that phrase in English with the color left out (`"a {color} ball"`). Each color makes three cards (English to French, French to English, and what the phrase means) worded by `templates`. Wrong answers are other colors plus the non-color words in `additionalIncorrectAnswers` (French word → English word, like `"crayon": "pencil"`); phrase cards swap other colors into the same phrase. `phraseHint` replaces a phrase card's usual hint, for feminine forms.
+- `geography`: the `question` asked on every map card, `nearbyCountries` (how many of the closest countries wrong answers come from), and `regions`, each with the `continent` the map zooms out to (`north-america`, `south-america`, `europe`, `africa`, `asia`, or `oceania`) and its `countries`, each `{ "name": "France", "id": "250", "capital": "Paris" }` where `id` is the ISO 3166-1 numeric code the map data uses. Capitals aren't used by any deck yet.
 
 #### Math rules
 
-Math problems are generated fresh every play, but the limits they follow live in the `mathRules` section of `flashcards.json`, so they can be changed without touching code:
+Math problems are generated fresh every play, but the limits they follow live in `subjectData.math` in `flashcards.json`, so they can be changed without touching code:
 
-- `wholeNumberOperations` (2nd and 3rd grade): deck size, and for each grade the allowed range for numbers and answers, the chance of negative numbers, and which operations it practices. Each operation sets how big its numbers are, and `largerFirst` keeps subtraction from going below zero.
+- `wholeNumberOperations` (2nd and 3rd grade, and 4th grade Addition Facts): deck size, and for each grade the allowed range for numbers and answers, the chance of negative numbers, and which operations it practices. Each operation sets how big its numbers are, and `largerFirst` keeps subtraction from going below zero.
 - `grade5`: deck size, how often each topic comes up in Mixed Review, multiplication factor sizes, division divisors and remainders, fraction denominators, decimal places and sizes, and the order-of-operations expressions with a range for each letter.
-- `decimalOperations` (6th grade): deck size, operations, answer range, units, and how often numbers are decimals, have two places, or divide evenly.
+- `decimalOperations` (6th grade): deck size, operations, answer range, units, and how often numbers have two places or divide evenly. `decimalOperands` is `"one"` (one decimal and one whole number, with `decimalFirstChance` picking which comes first) or `"both"` (both decimals).
+- `calculationPractice` (6th grade Unit 0): deck size, how often each topic comes up (`simplify`, `gcf`, `lcm`), and number ranges: the denominator of the simplified fraction and the common factor it's scaled up by, the greatest common factor and the multipliers that make the two numbers, and the two numbers for a least common multiple.
 
 A number rule is either one range, `{ "min": 1, "max": 9 }`, or a list of ranges picked by weight. For example, `[{ "min": 1, "max": 9, "weight": 0.3 }, { "min": 10, "max": 99, "weight": 0.7 }]` gives a 2-digit number 70% of the time. Wherever there are weights, they're relative, so `1, 1, 2` works the same as `0.25, 0.25, 0.5`, and a weight of 0 turns that option off.
 
@@ -153,16 +181,16 @@ The code still decides the kinds of problems, their hints, and how wrong answers
 
 #### Grades, subjects, and decks
 
-The home screen is built from three sections of `flashcards.json`:
+The home screen is built from `appSettings.home` and the `catalog` group of `flashcards.json`:
 
 - `home`: the `tagline` under the title and the `intro` above the grade list.
 - `subjects`: each subject's `label` and tile `color` (`red`, `green`, `purple`, `blue`, `yellow`, or `orange`), keyed by a short name like `math` or `reading`.
-- `grades`: one entry per grade tile, in order, with its `grade` number, `label`, tile `color` (`sky`, `violet`, `teal`, `rose`, `amber`, or any subject color), and `subjects`. Set `"pickSubject": true` to show a subject step before the decks; without it, the grade goes straight to its decks.
+- `grades`: one entry per grade tile, in order, with its `grade` (a number, or a name like `"computer-science"` for a track that isn't a school grade; it's the `?grade=` value), `label`, tile `color` (`sky`, `violet`, `teal`, `rose`, `amber`, or any subject color), and `subjects`. Set `"pickSubject": true` to show a subject step before the decks; without it, the grade goes straight to its decks.
 
 Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, a `blurb` for the subject tile (it falls back to the summary), and `"available": false` to show it as coming soon. It lists its decks one of two ways:
 
-- `decks`: plain decks, each badged with the subject name.
-- `units`: numbered units, each with a `label` ("Unit 1", "Final"), a `title`, and a `deck`. A unit without a `deck` is listed as coming soon.
+- `decks`: plain decks. On a grade without a subject step (4th grade), each is badged with its subject name, since one list mixes subjects.
+- `units`: numbered units, each with a `title` and a `deck`. Units are numbered "Unit 1", "Unit 2", ... in order; one with its own `label` (like "Final") keeps it and isn't counted. A unit that's just a string, like `"Fraction Operations"`, is listed as coming soon.
 
 ```json
 {
@@ -174,30 +202,32 @@ Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, 
 ```
 
 - `unit` is the `?unit=` code: lowercase, hyphenated, and unique within its grade and subject.
-- `description` can include `{count}`, which becomes the number of flashcards the deck draws from.
+- `description` can include `{count}`, which becomes the number of cards the deck draws from.
 - `interaction` is `"multiple-choice"` (the default) or `"voice-or-type"`.
 - `build` says where the cards come from:
-  - `{ "type": "cards", "category": "science-cells-unit1" }`: written cards from one category. `deckType` picks the play screen's labels (it defaults to the subject, so reading decks set `"sight-words"` or `"vocabulary"`), and math decks need an `operation` such as `"addition"`. `"listen": true` reads each question aloud instead of showing it.
-  - `{ "type": "wholeNumberOperations", "topic": "add" }`: generated 2nd/3rd grade math using that grade's rules (`add`, `sub`, `mul`, `div`, or `mixed`).
+  - `{ "type": "cards", "sets": ["cells"] }`: written cards from one or more of the deck subject's card sets (a science deck's `cells` is `subjectData.science.cardSets.cells`). `deckType` picks the play screen's labels (it defaults to the subject, so vocabulary decks set `"vocabulary"`), and math decks need an `operation` such as `"addition"`. `"listen": true` reads each question aloud instead of showing it.
+  - `{ "type": "sightWords" }`: the grade's sight words from `reading.sightWords`.
+  - `{ "type": "frenchColors" }`: the French colors deck.
+  - `{ "type": "wholeNumberOperations", "topic": "add" }`: generated whole-number math (2nd to 4th grade) using that grade's rules (`add`, `sub`, `mul`, `div`, or `mixed`).
   - `{ "type": "grade5", "topic": "fractions" }`: generated 5th grade math (`multiplication`, `division`, `fractions`, `decimals`, `order-of-operations`, or `mixed`).
   - `{ "type": "decimalOperations" }`: generated 6th grade decimal operations.
-  - `{ "type": "countries", "categories": ["geography-europe-west"] }`: map cards for every country in those categories, with nearby countries as wrong answers. The geography Final lists all eleven categories.
+  - `{ "type": "calculationPractice" }`: generated fraction-simplifying, greatest common factor, and least common multiple problems, mixed. Add `"topic": "simplify"`, `"gcf"`, or `"lcm"` for just one.
+  - `{ "type": "countries", "regions": ["europe-west"] }`: map cards for every country in those geography regions, with nearby countries as wrong answers. Leave out `regions` for every region, as the geography Final does.
 
 #### Play settings and wording
 
-Gameplay numbers and on-screen wording also live in `flashcards.json`:
+Gameplay numbers and on-screen wording live in `appSettings`:
 
 - `multipleChoice`: `secondsPerQuestion` (the Timed limit, also shown in the home screen hint), `lowTimeSeconds` (when the timer turns to a warning), `roundSize` (cards between encouragement screens), `wrongChoices` (wrong answers shown with each written or country card), `scoring` (`firstTry` points, minus `perWrongPick` per wrong pick and `hint` for using the hint, never below `minimum`), the `encouragement` messages shown between rounds, and `speech.rate` (how fast decks read aloud are spoken; 1 is normal speed).
 - `typingAndVoice` (4th grade typing and voice decks): `cardsBeforeBreak`, how long the encouragement break lasts in `breakSeconds`, and its `encouragement` messages.
-- `geography.nearbyCountries`: how many of the closest countries the wrong answers are drawn from.
 - `playText`: the play screen's `title`, the cue above each question (`choiceCue` for multiple choice, `listenCue` for cards read aloud, `typingCue` for typing and voice), `promptName` (as in "Your problem"), and the end-of-deck `finishedTitle`, `choiceFinished`, and `typingFinished`. Every field is set in `default`. An entry named after a subject (or a deck's `deckType`, like `sight-words`) overrides some of them, and math decks then apply an entry named after their operation (like `decimal-operations`).
 
 The math generators always offer four answers, whatever `wrongChoices` says. While a game is paused, answers show as letters A–F, so keep `wrongChoices` at 5 or below.
 
 ### Adding a deck
 
-1. Add its cards to `src/data/flashcards.json` under a new `category`. Generated math needs a generator under `src/data/subjects/math/` and a new `build` type in `src/data/decks.ts`.
-2. Add the deck to its grade and subject in `grades`, under `decks` or as a unit's `deck`. A new grade or subject is just a new entry there (and in `subjects`).
+1. Add its cards to `flashcards.json` in the data repo as a new card set in its subject's `cardSets` under `subjectData` (add the subject there if it's new). Generated math needs a generator under `src/data/subjects/math/` and a new `build` type in `src/data/decks.ts`.
+2. Add the deck to its grade and subject in `catalog.grades`, under `decks` or as a unit's `deck`. A new grade or subject is just a new entry there (and in `catalog.subjects`).
 
 Nothing else changes in code. Deck ids are worked out as `{grade}-{subject}-{unit}`.
 

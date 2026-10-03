@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { __testing, createDecimalOperationsDeck } from "../../src/data/subjects/math/decimalOperations";
 import { copyMathRules, flashcardData, mathRules } from "../helpers/flashcards";
-import { queueRandom, seedRandom } from "../helpers/random";
+import { seedRandom } from "../helpers/random";
 
 const rules = mathRules.decimalOperations;
 const { formatValue, buildChoices, buildHint, toCard } = __testing;
@@ -9,7 +9,7 @@ const info = { grade: 6, unitLabel: "Unit 1" };
 
 describe("createDecimalOperationsDeck", () => {
   it("has 50 cards in rounds of 10", () => {
-    expect([rules.deckSize, flashcardData.multipleChoice.roundSize]).toEqual([50, 10]);
+    expect([rules.deckSize, flashcardData.appSettings.multipleChoice.roundSize]).toEqual([50, 10]);
     expect(createDecimalOperationsDeck(rules, info)).toMatchObject({
       subject: "math",
       operation: "decimal-operations",
@@ -33,13 +33,50 @@ describe("createDecimalOperationsDeck", () => {
     }
   });
 
+  it("makes one number a decimal and the other a whole number", () => {
+    expect(rules.decimalOperands).toBe("one");
+    const operands = (prompt: string) => (prompt.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+    const sides = new Set<string>();
+    for (let seed = 1; seed <= 40; seed += 1) {
+      seedRandom(seed);
+      for (const card of createDecimalOperationsDeck(rules, info).cards) {
+        const numbers = operands(card.prompt);
+        expect(numbers, card.prompt).toHaveLength(2);
+        expect(numbers.filter((value) => !Number.isInteger(value)), card.prompt).toHaveLength(1);
+        sides.add(Number.isInteger(numbers[0]) ? "second" : "first");
+        if (card.prompt.includes("÷") && !Number.isInteger(numbers[0])) {
+          expect(Number.isInteger(numbers[1])).toBe(true);
+        }
+      }
+    }
+    expect(sides).toEqual(new Set(["first", "second"]));
+  });
+
+  it("makes both numbers decimals when the rules ask for both", () => {
+    const changed = copyMathRules().decimalOperations;
+    changed.decimalOperands = "both";
+    seedRandom(4);
+    for (const card of createDecimalOperationsDeck(changed, info).cards) {
+      const numbers = (card.prompt.match(/\d+(?:\.\d+)?/g) ?? []).map(Number);
+      expect(numbers.every((value) => !Number.isInteger(value)), card.prompt).toBe(true);
+    }
+  });
+
   it("falls back to a fixed problem after 50 unreasonable attempts", () => {
-    // Each attempt: 0.01 ÷ 8.25, whose answer is too small to show, so it's thrown out.
-    const attempt = [0.8, 0.1, 0.1, 0, 0.1, 0.9999, 0.9];
-    queueRandom(Array.from({ length: 50 }, () => attempt).flat());
-    const [card] = createDecimalOperationsDeck(rules, info).cards;
-    expect(card.prompt).toBe("2.5 + 1.75");
-    expect(card.answers).toEqual(["4.25", "4.25"]);
+    const changed = copyMathRules().decimalOperations;
+    changed.answer = { min: 500, max: 500 };
+    // An answer of 0 always passes, so no subtraction: two equal decimals would make one.
+    changed.operations = ["add"];
+    changed.deckSize = 1;
+    expect(createDecimalOperationsDeck(changed, info).cards[0]).toMatchObject({
+      prompt: "2.5 + 3",
+      answers: ["5.5", "5.5"]
+    });
+    changed.decimalOperands = "both";
+    expect(createDecimalOperationsDeck(changed, info).cards[0]).toMatchObject({
+      prompt: "2.5 + 1.75",
+      answers: ["4.25", "4.25"]
+    });
   });
 
   it("follows changed rules: operations, units, and answer size", () => {

@@ -23,17 +23,19 @@ const mathDeck = (count: number, extra: Partial<Card> = {}): SubjectDeck => ({
 });
 
 const renderMode = (deck: SubjectDeck, timed = false, changes: Partial<MultipleChoiceSettings> = {}) => {
-  const settings = { ...flashcardData.multipleChoice, ...changes };
+  const settings = { ...flashcardData.appSettings.multipleChoice, ...changes };
   const result = render(MultipleChoiceMode, {
     deck,
     timed,
     settings,
     text: playTextFor(flashcardData, deck),
-    language: flashcardData.language
+    language: flashcardData.appSettings.language
   });
   const onBack = vi.fn();
+  const onHome = vi.fn();
   result.component.$on("back", onBack);
-  return { ...result, onBack };
+  result.component.$on("home", onHome);
+  return { ...result, onBack, onHome };
 };
 
 const begin = async () => {
@@ -68,9 +70,9 @@ describe("MultipleChoiceMode", () => {
     expect(screen.getByText("Tap anywhere to begin")).toBeInTheDocument();
     expect(screen.queryByText("Choose the answer")).toBeNull();
 
-    const home = screen.getByRole("button", { name: "← Home" });
-    await fireEvent.pointerDown(home);
-    await fireEvent.keyDown(home, { key: "Enter" });
+    const back = screen.getByRole("button", { name: "← Back" });
+    await fireEvent.pointerDown(back);
+    await fireEvent.keyDown(back, { key: "Enter" });
     await fireEvent.keyDown(document.body, { key: "a" });
     expect(screen.getByText("Ready?")).toBeInTheDocument();
 
@@ -92,7 +94,7 @@ describe("MultipleChoiceMode", () => {
   });
 
   it("scores first-try answers and finishes the deck", async () => {
-    const { onBack } = renderMode(mathDeck(3));
+    const { onBack, onHome } = renderMode(mathDeck(3));
     expect(screen.getByRole("heading", { name: "Math facts" })).toBeInTheDocument();
     expect(screen.getByText("Grade 2 · Practice")).toBeInTheDocument();
     await begin();
@@ -113,8 +115,11 @@ describe("MultipleChoiceMode", () => {
     expect(screen.getByText(/Great math practice\./)).toBeInTheDocument();
 
     await fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
-    await fireEvent.click(screen.getByRole("button", { name: "← Home" }));
+    await fireEvent.click(screen.getByRole("button", { name: "← Back" }));
     expect(onBack).toHaveBeenCalledTimes(2);
+    expect(onHome).not.toHaveBeenCalled();
+    await fireEvent.click(screen.getByRole("button", { name: "Home" }));
+    expect(onHome).toHaveBeenCalledOnce();
   });
 
   it("follows the scoring, round size, and encouragement it's given", async () => {

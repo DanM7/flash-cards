@@ -22,11 +22,10 @@ export interface DecimalOperationsRules {
   /** Chance an addition or subtraction problem gets a unit. */
   unitChance: number;
   units: string[];
-  /** Chance both numbers are decimals; otherwise one is, picked by decimalFirstChance. */
-  bothDecimalChance: number;
+  /** "one": one number is a decimal and the other a whole number (88.88 ÷ 4). "both": both are decimals. */
+  decimalOperands: "one" | "both";
+  /** With one decimal, the chance it's the first number. */
   decimalFirstChance: number;
-  /** Chance the number that isn't required to be a decimal is one anyway. */
-  decimalChance: number;
   /** Chance a decimal has two places instead of one (money always has two). */
   twoPlacesChance: number;
   /** Largest whole-number part of each number, by operation, plus overrides for divisors and money. */
@@ -368,10 +367,10 @@ const randomDecimal = (maxWhole: number, places: 1 | 2): number => {
 };
 
 const randomOperand = (
-  options: { mustBeDecimal: boolean; money: boolean; maxWhole: number },
+  options: { decimal: boolean; money: boolean; maxWhole: number },
   rules: DecimalOperationsRules
 ): number => {
-  if (options.mustBeDecimal || chance(rules.decimalChance)) {
+  if (options.decimal) {
     const places: 1 | 2 = options.money || chance(rules.twoPlacesChance) ? 2 : 1;
     return randomDecimal(options.maxWhole, places);
   }
@@ -394,22 +393,22 @@ const chooseUnit = (op: Op, rules: DecimalOperationsRules): UnitKind => {
 
 const generateProblem = (rules: DecimalOperationsRules): ProblemSpec => {
   const { maxWhole } = rules;
+  const decimalsWanted = rules.decimalOperands === "both" ? 2 : 1;
   for (let attempt = 0; attempt < 50; attempt += 1) {
     const op = pick(rules.operations);
     const unit = chooseUnit(op, rules);
     const money = unit === "money";
 
-    // At least one operand is always a decimal, since randomDecimal never returns a whole number.
-    const bothDecimal = chance(rules.bothDecimalChance);
-    const decimalOnA = bothDecimal || chance(rules.decimalFirstChance);
+    const decimalOnA = decimalsWanted === 2 || chance(rules.decimalFirstChance);
+    const decimalOnB = decimalsWanted === 2 || !decimalOnA;
 
     let a = randomOperand(
-      { mustBeDecimal: decimalOnA, money, maxWhole: money ? maxWhole.money : maxWhole[op] },
+      { decimal: decimalOnA, money, maxWhole: money ? maxWhole.money : maxWhole[op] },
       rules
     );
     let b = randomOperand(
       {
-        mustBeDecimal: bothDecimal || !decimalOnA,
+        decimal: decimalOnB,
         money,
         maxWhole: op === "div" ? maxWhole.divisor : money ? maxWhole.money : maxWhole[op]
       },
@@ -420,31 +419,28 @@ const generateProblem = (rules: DecimalOperationsRules): ProblemSpec => {
       [a, b] = [b, a];
     }
 
-    if (op === "div") {
-      // Prefer cleaner quotients: rebuild dividend from divisor × small quotient.
-      if (chance(rules.cleanQuotientChance)) {
-        const quotient = randomOperand(
-          { mustBeDecimal: decimalPlaces(b) === 0, money: false, maxWhole: maxWhole.quotient },
-          rules
-        );
-        a = roundNice(b * quotient);
-        if (decimalPlaces(a) === 0 && decimalPlaces(b) === 0) {
-          b = randomDecimal(5, 1);
-          a = roundNice(b * quotient);
-        }
-      }
+    // Prefer cleaner quotients: rebuild the dividend from divisor × a small quotient. The quotient is
+    // a decimal only when the dividend should be one and the divisor isn't (88.88 ÷ 4).
+    if (op === "div" && chance(rules.cleanQuotientChance)) {
+      const quotient = randomOperand(
+        { decimal: decimalOnA && !decimalOnB, money: false, maxWhole: maxWhole.quotient },
+        rules
+      );
+      a = roundNice(b * quotient);
     }
 
     const correct = roundNice(compute(a, b, op));
-    if (!isReasonableAnswer(correct, rules) || (decimalPlaces(a) === 0 && decimalPlaces(b) === 0)) {
+    const decimals = [a, b].filter((value) => decimalPlaces(value) > 0).length;
+    if (!isReasonableAnswer(correct, rules) || decimals !== decimalsWanted) {
       continue;
     }
 
     return { a: roundNice(a), b: roundNice(b), op, unit };
   }
 
-  // Safe fallback — always has a decimal.
-  return { a: 2.5, b: 1.75, op: "add", unit: "none" };
+  return decimalsWanted === 2
+    ? { a: 2.5, b: 1.75, op: "add", unit: "none" }
+    : { a: 2.5, b: 3, op: "add", unit: "none" };
 };
 
 const toCard = (spec: ProblemSpec, rules: DecimalOperationsRules): Card => {

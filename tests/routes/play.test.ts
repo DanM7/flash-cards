@@ -15,11 +15,13 @@ const words = (...list: string[]): SubjectDeck => ({
 });
 
 const renderPlay = (deck: SubjectDeck, autoMic = false, changes: Partial<TypingAndVoiceSettings> = {}) => {
-  const settings = { ...flashcardData.typingAndVoice, ...changes };
+  const settings = { ...flashcardData.appSettings.typingAndVoice, ...changes };
   const result = render(PlayRoute, { deck, autoMic, settings, text: playTextFor(flashcardData, deck) });
   const onBack = vi.fn();
+  const onHome = vi.fn();
   result.component.$on("back", onBack);
-  return { ...result, onBack };
+  result.component.$on("home", onHome);
+  return { ...result, onBack, onHome };
 };
 
 const prompt = () => document.querySelector(".flash__word")?.textContent ?? "";
@@ -86,7 +88,7 @@ describe("play route (typing and voice)", () => {
     });
 
     it("can mark a card correct or skip it", async () => {
-      const { onBack } = renderPlay(words("cat", "dog", "sun", "hat"));
+      const { onBack, onHome } = renderPlay(words("cat", "dog", "sun", "hat"));
       const first = prompt();
       await fireEvent.click(button("Mark correct"));
       const second = prompt();
@@ -103,8 +105,11 @@ describe("play route (typing and voice)", () => {
       await fireEvent.click(button("Skip"));
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
       await fireEvent.click(button("Back to home"));
-      await fireEvent.click(button("← Home"));
+      await fireEvent.click(button("← Back"));
       expect(onBack).toHaveBeenCalledTimes(2);
+      expect(onHome).not.toHaveBeenCalled();
+      await fireEvent.click(button("Home"));
+      expect(onHome).toHaveBeenCalledOnce();
     });
 
     it("asks again when an answer sounds like another word", async () => {

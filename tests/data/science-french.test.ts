@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { SubjectDeck } from "../../src/data/CardTypes";
+import type { CardSet, SubjectDeck } from "../../src/data/CardTypes";
 import { getDeckOptionById, resolveDeck, type DeckOption } from "../../src/data/decks";
+import { createFrenchColorsDeck } from "../../src/data/subjects/french/colors";
 import { flashcardData } from "../helpers/flashcards";
 import { seedRandom } from "../helpers/random";
 
@@ -27,11 +28,15 @@ describe("6th grade science decks", () => {
         expect(card.choices).toContain(card.answers[0]);
       }
     }
-    expect(decks[0].cards[0]).toEqual({
-      prompt: "What is the basic unit of life?",
-      answers: ["Cell"],
-      choices: ["Atom", "Cell", "Tissue", "Organ"]
-    });
+    expect(decks[0].cards[0]).toMatchObject({ prompt: "What is the basic unit of life?", answers: ["Cell"] });
+  });
+
+  it("draws wrong answers from the unit's other answers and its additional wrong answers", async () => {
+    const set = flashcardData.subjectData.science.cardSets?.cells as CardSet;
+    const pool = new Set([...Object.values(set.cards), ...(set.additionalIncorrectAnswers ?? [])]);
+    for (const card of (await deck("6-science-cells")).cards) {
+      expect(card.choices?.every((choice) => pool.has(choice)), card.prompt).toBe(true);
+    }
   });
 });
 
@@ -110,5 +115,24 @@ describe("6th grade French colors deck", () => {
     for (const choice of seen) {
       expect(choice).toMatch(/^an? \w+ ball$/);
     }
+  });
+
+  it("mixes non-color words into single-word wrong answers, in the matching language", async () => {
+    const { additionalIncorrectAnswers, colors } = flashcardData.subjectData.french.colors;
+    const french = new Set([...colors.map((color) => color.fr), ...Object.keys(additionalIncorrectAnswers)]);
+    const english = new Set([...colors.map((color) => color.en), ...Object.values(additionalIncorrectAnswers)]);
+    const cards = (await deck("6-french-colors")).cards;
+    const toFrench = cards.filter((card) => card.prompt.startsWith("How do you say"));
+    const toEnglish = cards.filter((card) => /^What does "\S+" mean\?$/.test(card.prompt));
+    expect(toFrench.flatMap((card) => card.choices).every((choice) => french.has(choice as string))).toBe(true);
+    expect(toEnglish.flatMap((card) => card.choices).every((choice) => english.has(choice as string))).toBe(true);
+    expect(toFrench.flatMap((card) => card.choices).some((choice) => choice === "crayon" || choice === "ville")).toBe(true);
+  });
+
+  it("leaves a placeholder it doesn't know as written", () => {
+    const data = structuredClone(flashcardData.subjectData.french.colors);
+    data.templates.toFrench.question = "Say {en} {mystery}";
+    const deck = createFrenchColorsDeck(data, 3, { grade: 6, unitLabel: "Colors" });
+    expect(deck.cards[0].prompt).toBe(`Say ${data.colors[0].en} {mystery}`);
   });
 });

@@ -1,19 +1,31 @@
-import type { Card, DeckInfo, Flashcard, GeographyDeck } from "../../CardTypes";
+import type { Card, DeckInfo, GeographyDeck } from "../../CardTypes";
 import { countryDistance, hasCountry, neighborIdsOf, type Continent } from "./atlas";
 
-export interface CountryChoices {
-  /** Wrong answers per card. */
-  wrongChoices: number;
-  /** Wrong answers are picked from this many of the closest countries in the same deck. */
+export interface GeographyCountry {
+  name: string;
+  /** ISO 3166-1 numeric id, matching the map data. */
+  id: string;
+  capital: string;
+}
+
+export interface GeographyRegion {
+  /** The map zooms out to this continent at the widest. */
+  continent: Continent;
+  countries: GeographyCountry[];
+}
+
+export interface Geography {
+  /** Wrong answers on a map card come from this many of the closest countries in the deck. */
   nearbyCountries: number;
+  /** Asked on every map card. */
+  question: string;
+  regions: Record<string, GeographyRegion>;
 }
 
 interface Country {
-  /** ISO 3166-1 numeric code, matching the map data. */
   id: string;
   name: string;
-  question: string;
-  continent?: Continent;
+  continent: Continent;
 }
 
 const shuffle = <T>(items: T[]): T[] => {
@@ -25,12 +37,8 @@ const shuffle = <T>(items: T[]): T[] => {
   return next;
 };
 
-const toCountry = (flashcard: Flashcard): Country => ({
-  id: flashcard.countryId as string,
-  name: flashcard.answer,
-  question: flashcard.question,
-  continent: flashcard.continent
-});
+const countriesIn = (region: GeographyRegion): Country[] =>
+  region.countries.map(({ id, name }) => ({ id, name, continent: region.continent }));
 
 /** Joins one or more names: "A", "A and B", "A, B and C". */
 const joinNames = (names: string[]): string =>
@@ -49,20 +57,19 @@ const buildHint = (country: Country, deckIds: Set<string>, nameById: Map<string,
 };
 
 /**
- * One map card per country in `categories`. Hints can name a bordering country from any
- * category, but prefer ones in the same deck.
+ * One map card per country in `regions` (every region when left out). Hints can name a bordering
+ * country from any region, but prefer ones in the same deck.
  */
 export const createCountriesDeck = (
-  flashcards: Flashcard[],
-  categories: string[],
+  geography: Geography,
+  regions: string[] | undefined,
   info: DeckInfo,
-  choices: CountryChoices
+  wrongChoices: number
 ): GeographyDeck => {
-  const allCountries = flashcards.filter((flashcard) => flashcard.countryId).map(toCountry);
+  const allCountries = Object.values(geography.regions).flatMap(countriesIn);
   const nameById = new Map(allCountries.map((country) => [country.id, country.name]));
-  const countries = flashcards
-    .filter((flashcard) => flashcard.countryId && categories.includes(flashcard.category as string))
-    .map(toCountry)
+  const countries = (regions ?? Object.keys(geography.regions))
+    .flatMap((key) => (geography.regions[key] ? countriesIn(geography.regions[key]) : []))
     .filter((country) => hasCountry(country.id));
   const deckIds = new Set(countries.map((country) => country.id));
 
@@ -70,12 +77,12 @@ export const createCountriesDeck = (
     const nearest = countries
       .filter((other) => other.id !== country.id)
       .sort((a, b) => countryDistance(country.id, a.id) - countryDistance(country.id, b.id))
-      .slice(0, choices.nearbyCountries);
+      .slice(0, geography.nearbyCountries);
     const wrong = shuffle(nearest)
-      .slice(0, choices.wrongChoices)
+      .slice(0, wrongChoices)
       .map((other) => other.name);
     return {
-      prompt: country.question,
+      prompt: geography.question,
       answers: [country.name],
       choices: shuffle([country.name, ...wrong]),
       hint: buildHint(country, deckIds, nameById),

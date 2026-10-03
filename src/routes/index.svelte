@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy, onMount } from "svelte";
-  import type { FlashcardData } from "../data/CardTypes";
+  import type { FlashcardData, GradeKey } from "../data/CardTypes";
   import {
     colorFor,
     deckDescription,
@@ -11,6 +11,7 @@
     type DeckOption
   } from "../data/decks";
   import { readNav, writeNav } from "../nav";
+  import HomeButton from "../components/HomeButton.svelte";
 
   export let data: FlashcardData;
 
@@ -23,7 +24,7 @@
     };
   }>();
 
-  let selectedGrade: number | null = null;
+  let selectedGrade: GradeKey | null = null;
   let selectedArea: string | null = null;
 
   $: subjects =
@@ -39,7 +40,7 @@
 
   $: hasTypingDecks = subjects.some((option) => option.interaction === "voice-or-type");
 
-  $: gradeLabel = data.grades.find((option) => option.grade === selectedGrade)?.label ?? "";
+  $: gradeLabel = data.catalog.grades.find((option) => option.grade === selectedGrade)?.label ?? "";
 
   $: selectedAreaLabel = selectedArea == null ? "" : subjectLabelFor(data, selectedArea);
 
@@ -47,7 +48,7 @@
 
   const readNavFromUrl = () => {
     const { grade: gradeParam, subject } = readNav();
-    const grade = data.grades.find((option) => String(option.grade) === gradeParam)?.grade ?? null;
+    const grade = data.catalog.grades.find((option) => String(option.grade) === gradeParam)?.grade ?? null;
     const area =
       grade == null
         ? undefined
@@ -74,7 +75,7 @@
     window.removeEventListener("popstate", readNavFromUrl);
   });
 
-  const chooseGrade = (grade: number) => {
+  const chooseGrade = (grade: GradeKey) => {
     selectedGrade = grade;
     selectedArea = null;
     writeNavToUrl("push");
@@ -82,6 +83,12 @@
 
   const chooseArea = (area: string) => {
     selectedArea = area;
+    writeNavToUrl("push");
+  };
+
+  const goToStart = () => {
+    selectedGrade = null;
+    selectedArea = null;
     writeNavToUrl("push");
   };
 
@@ -108,22 +115,21 @@
   <header class="home__brand">
     <span class="home__logo" aria-hidden="true">✦</span>
     <h1 class="home__title">Flash Cards</h1>
-    <p class="home__tagline">{data.home.tagline}</p>
+    <p class="home__tagline">{data.appSettings.home.tagline}</p>
   </header>
 
   {#if selectedGrade == null}
     <div class="home__intro">
-      <p class="home__lead">{data.home.intro}</p>
+      <p class="home__lead">{data.appSettings.home.intro}</p>
     </div>
 
     <div class="home-grades">
-      {#each data.grades as option (option)}
+      {#each data.catalog.grades as option (option)}
         <button
           type="button"
           class="home-grade home-grade--{option.color}"
           on:click={() => chooseGrade(option.grade)}
         >
-          <span class="home-grade__badge">Grade {option.grade}</span>
           <span class="home-grade__title">{option.label}</span>
           <span class="home-grade__subjects">
             {#each option.subjects as subject (subject)}
@@ -137,6 +143,9 @@
       {/each}
     </div>
   {:else}
+    <div class="home__home-btn">
+      <HomeButton on:click={goToStart} />
+    </div>
     <div class="home__subject-head">
       <button type="button" class="fc-btn fc-btn--quiet home__back" on:click={goBack}>
         {selectedArea != null ? `← ${gradeLabel}` : "← Grades"}
@@ -148,7 +157,7 @@
         {:else if hasTypingDecks}
           Start with typing or the microphone. Cards shuffle every round.
         {:else}
-          Multiple choice — Practice at your own pace, or Timed with {data.multipleChoice.secondsPerQuestion} seconds per
+          Multiple choice — Practice at your own pace, or Timed with {data.appSettings.multipleChoice.secondsPerQuestion} seconds per
           question.
         {/if}
       </p>
@@ -163,7 +172,9 @@
             disabled={area.available === false}
             on:click={() => chooseArea(area.subject)}
           >
-            <span class="home-grade__badge">{area.available === false ? "Coming soon" : gradeLabel}</span>
+            {#if area.available === false}
+              <span class="home-grade__badge">Coming soon</span>
+            {/if}
             <span class="home-grade__title">{subjectLabelFor(data, area.subject)}</span>
             <span class="home-grade__blurb">{area.blurb ?? area.summary}</span>
           </button>
@@ -179,14 +190,14 @@
             role="listitem"
           >
             <div class="home-topic__top">
-              <span class="home-topic__badge">
-                {selectedAreaLabel} · {unit.label}{option ? "" : " · Coming soon"}
-              </span>
+              {#if !option}
+                <span class="home-topic__badge">Coming soon</span>
+              {/if}
               <h2 class="home-topic__title">{unit.label}: {unit.title}</h2>
             </div>
             <p class="home-topic__desc">
               {option
-                ? deckDescription(option, data.cards)
+                ? deckDescription(option, data)
                 : "Practice for this unit will be added once the details are ready."}
             </p>
             <div class="home-topic__actions">
@@ -219,10 +230,13 @@
           role="listitem"
         >
           <div class="home-topic__top">
-            <span class="home-topic__badge">{option.badge}</span>
+            {#if selectedArea == null}
+              <!-- Only when one list mixes subjects, as 4th grade does; otherwise the heading names the subject. -->
+              <span class="home-topic__badge">{option.badge}</span>
+            {/if}
             <h2 class="home-topic__title">{option.title}</h2>
           </div>
-          <p class="home-topic__desc">{deckDescription(option, data.cards)}</p>
+          <p class="home-topic__desc">{deckDescription(option, data)}</p>
           <div class="home-topic__actions">
             {#if option.interaction === "multiple-choice"}
               <button
@@ -268,6 +282,7 @@
 
 <style>
   .home {
+    position: relative;
     padding: clamp(1.35rem, 4vw, 2rem);
     display: flex;
     flex-direction: column;
@@ -276,6 +291,12 @@
 
   .home__brand {
     text-align: center;
+  }
+
+  .home__home-btn {
+    position: absolute;
+    top: clamp(0.75rem, 2.5vw, 1.25rem);
+    left: clamp(0.75rem, 2.5vw, 1.25rem);
   }
 
   .home__logo {
@@ -438,7 +459,7 @@
     font-weight: 800;
   }
 
-  /* Grade colors (see grades in data/flashcards.json); grades can also use any subject color. */
+  /* Grade colors (see grades in flashcards.json); grades can also use any subject color. */
   .home-grade--sky {
     background: linear-gradient(160deg, rgba(224, 242, 254, 0.9) 0%, #fff 55%);
     border-color: rgba(2, 132, 199, 0.2);
@@ -448,11 +469,6 @@
     border-color: rgba(2, 132, 199, 0.45);
   }
 
-  .home-grade--sky .home-grade__badge {
-    background: rgba(2, 132, 199, 0.12);
-    color: #0369a1;
-  }
-
   .home-grade--violet {
     background: linear-gradient(160deg, rgba(237, 233, 254, 0.9) 0%, #fff 55%);
     border-color: rgba(124, 58, 237, 0.2);
@@ -460,11 +476,6 @@
 
   .home-grade--violet:hover:not(:disabled) {
     border-color: rgba(124, 58, 237, 0.45);
-  }
-
-  .home-grade--violet .home-grade__badge {
-    background: rgba(124, 58, 237, 0.12);
-    color: #6d28d9;
   }
 
   .home-grade--teal {
@@ -480,11 +491,6 @@
     border-color: rgba(225, 29, 72, 0.45);
   }
 
-  .home-grade--rose .home-grade__badge {
-    background: rgba(225, 29, 72, 0.1);
-    color: #be123c;
-  }
-
   .home-grade--amber {
     background: linear-gradient(160deg, rgba(255, 247, 237, 0.85) 0%, #fff 55%);
     border-color: rgba(234, 88, 12, 0.18);
@@ -492,11 +498,6 @@
 
   .home-grade--amber:hover:not(:disabled) {
     border-color: rgba(234, 88, 12, 0.4);
-  }
-
-  .home-grade--amber .home-grade__badge {
-    background: var(--fc-accent-soft);
-    color: #c2410c;
   }
 
   .home-topics {
@@ -517,7 +518,7 @@
     gap: var(--fc-space-md);
   }
 
-  /* Subject colors (see subjects in data/flashcards.json). */
+  /* Subject colors (see subjects in flashcards.json). */
   .home-grade--red,
   .home-topic--red {
     background: linear-gradient(160deg, rgba(254, 226, 226, 0.9) 0%, #fff 55%);

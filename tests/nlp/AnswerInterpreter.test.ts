@@ -15,6 +15,12 @@ describe("AnswerInterpreter", () => {
     expect(AnswerInterpreter.interpret("four", card(["for"])).isCorrect).toBe(true);
   });
 
+  it("accepts a number answer said or typed as words", () => {
+    expect(AnswerInterpreter.interpret("five", card(["5"])).matchType).toBe("exact");
+    expect(AnswerInterpreter.interpret("Forty-two", card(["42"])).isCorrect).toBe(true);
+    expect(AnswerInterpreter.interpret("six", card(["5"])).isCorrect).toBe(false);
+  });
+
   it("accepts listed acceptable transcripts", () => {
     const result = AnswerInterpreter.interpret("thee", card(["the"], { acceptableTranscripts: ["thee"] }));
     expect(result.isCorrect).toBe(true);

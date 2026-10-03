@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { FlashcardData } from "../../src/data/CardTypes";
 import {
+  cardCount,
   colorFor,
   deckDescription,
   deckOptions,
@@ -15,19 +16,21 @@ import {
   unitsFor,
   type DeckOption
 } from "../../src/data/decks";
-import { copyFlashcardData, flashcardData, flashcards } from "../helpers/flashcards";
+import { copyFlashcardData, flashcardData } from "../helpers/flashcards";
 
 const option = (id: string, data: FlashcardData = flashcardData) => getDeckOptionById(data, id) as DeckOption;
 
 describe("subjects", () => {
   it("gives every subject its label and fixed color", () => {
-    expect(flashcardData.subjects).toEqual({
+    expect(flashcardData.catalog.subjects).toEqual({
       math: { label: "Math", color: "red" },
       science: { label: "Science", color: "green" },
       french: { label: "French", color: "purple" },
       reading: { label: "Reading", color: "blue" },
       history: { label: "History", color: "yellow" },
-      geography: { label: "Geography", color: "orange" }
+      geography: { label: "Geography", color: "orange" },
+      angular: { label: "Angular", color: "red" },
+      "azure-fundamentals": { label: "Azure Fundamentals", color: "blue" }
     });
     expect(subjectLabelFor(flashcardData, "geography")).toBe("Geography");
     expect(colorFor(flashcardData, "reading")).toBe("blue");
@@ -40,13 +43,14 @@ describe("subjects", () => {
 });
 
 describe("grades", () => {
-  it("lists grades 2 through 6, each with its own tile color", () => {
-    expect(flashcardData.grades.map((grade) => [grade.grade, grade.label, grade.color])).toEqual([
+  it("lists grades 2 through 6 and Computer Science, each with its own tile color", () => {
+    expect(flashcardData.catalog.grades.map((grade) => [grade.grade, grade.label, grade.color])).toEqual([
       [2, "2nd Grade", "sky"],
       [3, "3rd Grade", "violet"],
       [4, "4th Grade", "teal"],
       [5, "5th Grade", "rose"],
-      [6, "6th Grade", "amber"]
+      [6, "6th Grade", "amber"],
+      ["computer-science", "Computer Science", "blue"]
     ]);
     expect(gradeFor(flashcardData, 9)).toBeUndefined();
   });
@@ -63,9 +67,9 @@ describe("grades", () => {
   });
 
   it("only names subjects the file describes", () => {
-    for (const grade of flashcardData.grades) {
+    for (const grade of flashcardData.catalog.grades) {
       for (const entry of grade.subjects) {
-        expect(flashcardData.subjects, `${grade.grade} ${entry.subject}`).toHaveProperty(entry.subject);
+        expect(flashcardData.catalog.subjects, `${grade.grade} ${entry.subject}`).toHaveProperty(entry.subject);
       }
     }
   });
@@ -91,16 +95,29 @@ describe("deck catalog", () => {
       title: "Addition",
       badge: "Math",
       gradeLabel: "2nd Grade",
-      interaction: "multiple-choice",
-      categories: []
+      interaction: "multiple-choice"
     });
     expect(option("6-geography-europe-west")).toMatchObject({
       title: "Unit 4: Europe: West",
       badge: "Geography · Unit 4",
       unitName: "Unit 4",
-      categories: ["geography-europe-west"]
+      build: { type: "countries", regions: ["europe-west"] }
     });
-    expect(option("6-science-cells").categories).toEqual(["science-cells-unit1"]);
+    expect(option("6-geography-final")).toMatchObject({ title: "Final: All Countries", unitName: "Final" });
+  });
+
+  it("numbers units in order, skipping ones with their own label", () => {
+    const data = copyFlashcardData();
+    data.catalog.grades[0].subjects[0].units = [
+      "First",
+      { label: "Review", title: "Look back" },
+      { title: "Second", deck: { unit: "second", description: "", build: { type: "sightWords" } } }
+    ];
+    expect(unitsFor(data, 2, "math")?.map((unit) => [unit.label, unit.title, unit.option?.id ?? null])).toEqual([
+      ["Unit 1", "First", null],
+      ["Review", "Look back", null],
+      ["Unit 2", "Second", "2-math-second"]
+    ]);
   });
 
   it("filters decks by grade", () => {
@@ -117,7 +134,11 @@ describe("deck catalog", () => {
     expect(geography).toHaveLength(12);
     expect(geography[11]).toMatchObject({ label: "Final", title: "All Countries", option: { id: "6-geography-final" } });
     const math = unitsFor(flashcardData, 6, "math") ?? [];
-    expect(math[0].option?.id).toBe("6-math-decimal-operations");
+    expect(math.slice(0, 3).map((unit) => [unit.label, unit.title, unit.option?.id ?? null])).toEqual([
+      ["Unit 0", "Calculation Practice", "6-math-calculation-practice"],
+      ["Unit 1", "Decimal Operations", "6-math-decimal-operations"],
+      ["Unit 2", "Fraction Operations", null]
+    ]);
     expect(math.filter((unit) => !unit.option)).toHaveLength(9);
   });
 
@@ -153,7 +174,7 @@ describe("playTextFor", () => {
   });
 
   it("uses the defaults for a deck type with no wording of its own", () => {
-    expect(playTextFor(flashcardData, { subject: "custom", cards: [] })).toEqual(flashcardData.playText.default);
+    expect(playTextFor(flashcardData, { subject: "custom", cards: [] })).toEqual(flashcardData.appSettings.playText.default);
   });
 });
 
@@ -176,17 +197,40 @@ describe("findDeckByUnit", () => {
 
 describe("deckDescription", () => {
   it("fills in how many flashcards the deck draws from", () => {
-    expect(deckDescription(option("6-geography-europe-west"), flashcards)).toBe(
+    expect(deckDescription(option("6-geography-europe-west"), flashcardData)).toBe(
       "Name all 23 countries of Western Europe from a blank map."
     );
-    expect(deckDescription(option("6-geography-final"), flashcards)).toBe(
+    expect(deckDescription(option("6-geography-final"), flashcardData)).toBe(
       "All 194 countries in random order, mixed across every continent."
     );
   });
 
   it("leaves descriptions without a count alone", () => {
     const cells = option("6-science-cells");
-    expect(deckDescription(cells, flashcards)).toBe(cells.description);
+    expect(deckDescription(cells, flashcardData)).toBe(cells.description);
+  });
+
+  it("counts cards in sets, words, colors, and regions, skipping ones the file doesn't have", () => {
+    const counted = (build: DeckOption["build"], grade = 4) =>
+      cardCount({ ...option("4-reading-sight-words"), grade, build }, flashcardData);
+    const { reading, french, geography } = flashcardData.subjectData;
+    const { sightWords } = reading;
+    // Sets are looked up in the deck's own subject (reading here), so French letters aren't found.
+    expect(counted({ type: "cards", sets: ["vocabulary-grade3", "letters", "nope"] })).toBe(
+      Object.keys(reading.cardSets?.["vocabulary-grade3"].cards ?? {}).length
+    );
+    const cellsIn = (subject: string) =>
+      cardCount({ ...option("6-science-cells"), subject, build: { type: "cards", sets: ["cells"] } }, flashcardData);
+    expect(cellsIn("science")).toBe(5);
+    expect(cellsIn("geography")).toBe(0);
+    expect(cellsIn("history")).toBe(0);
+    expect(counted({ type: "sightWords" })).toBe(sightWords["4"].length);
+    expect(counted({ type: "sightWords" }, 9)).toBe(0);
+    expect(counted({ type: "frenchColors" })).toBe(french.colors.colors.length * 3);
+    expect(counted({ type: "countries", regions: ["oceania", "atlantis"] })).toBe(
+      geography.regions.oceania.countries.length
+    );
+    expect(counted({ type: "grade5", topic: "order-of-operations" })).toBe(0);
   });
 });
 
@@ -204,15 +248,29 @@ describe("resolveDeck", () => {
     }
   }, 60_000);
 
-  it("builds the 4th grade decks from their flashcards", async () => {
+  it("builds the 4th grade sight words and generated addition facts", async () => {
     const sightWords = await resolveDeck(option("4-reading-sight-words"), flashcardData);
     expect(sightWords).toMatchObject({ subject: "sight-words", grade: 4 });
     expect(sightWords).not.toHaveProperty("unitLabel");
-    expect(sightWords.cards[0]).toEqual({ prompt: "a", answers: ["a"], acceptableTranscripts: ["hey"] });
-    const addition = await resolveDeck(option("4-math-addition-facts"), flashcardData);
-    expect(addition).toMatchObject({ subject: "math", operation: "addition" });
-    expect(addition.cards[0]).toEqual({ prompt: "2 + 3", answers: ["5", "five"] });
+    expect(sightWords.cards[0]).toEqual({ prompt: "a", answers: ["a"] });
+    expect(sightWords.cards).toHaveLength(100);
     expect(sightWords).not.toHaveProperty("listen");
+
+    const addition = await resolveDeck(option("4-math-addition-facts"), flashcardData);
+    expect(addition).toMatchObject({ subject: "math", operation: "addition", grade: 4 });
+    expect(addition.cards).toHaveLength(flashcardData.subjectData.math.wholeNumberOperations.deckSize);
+    for (const card of addition.cards) {
+      const [a, b] = card.prompt.split(" + ").map(Number);
+      expect([a, b].every((n) => n >= 1 && n <= 9), card.prompt).toBe(true);
+      expect(card.answers).toEqual([String(a + b)]);
+      expect(a + b).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it("has no sight words for a grade the file doesn't list them for", async () => {
+    const data = copyFlashcardData();
+    data.subjectData.reading.sightWords = {};
+    await expect(resolveDeck(option("4-reading-sight-words", data), data)).rejects.toThrow("has no cards");
   });
 
   it.each([
@@ -239,28 +297,82 @@ describe("resolveDeck", () => {
     expect(await labelOf("3-math-mixed")).toBe("3rd Grade · All Four Operations");
     expect(await labelOf("5-math-order-of-operations")).toBe("5th Grade · Order of Operations");
     expect(await labelOf("6-math-decimal-operations")).toBe("Unit 1");
+    expect(await labelOf("6-math-calculation-practice")).toBe("Unit 0");
     expect(await labelOf("6-science-cells")).toBe("Unit 1: Cells");
     expect(await labelOf("6-french-colors")).toBe("Unit 3: Colors");
     expect(await labelOf("6-geography-final")).toBe("Final: All Countries");
   });
 
+  it.each([
+    ["angular", "beginner", "beginner", 24],
+    ["angular", "intermediate", "intermediate", 28],
+    ["angular", "expert", "expert", 28],
+    ["angular", "mastery", "mastery", 20],
+    ["azure-fundamentals", "all-terms", "terms", 40]
+  ])("shows each %s %s definition and asks for the term, among the deck's other terms", async (subject, unit, set, size) => {
+    const option = getDeckOptionById(flashcardData, `computer-science-${subject}-${unit}`) as DeckOption;
+    expect(findDeckByUnit(flashcardData, "computer-science", subject, unit)).toBe(option);
+    const deck = await resolveDeck(option, flashcardData);
+    expect(deck).toMatchObject({ subject, grade: "computer-science" });
+    expect("unitLabel" in deck && deck.unitLabel).toBe(`Computer Science · ${option.title}`);
+    const terms = new Set(Object.values(flashcardData.subjectData[subject].cardSets?.[set].cards ?? {}));
+    expect(deck.cards).toHaveLength(size);
+    for (const card of deck.cards) {
+      expect(card.prompt).toMatch(/\.$/);
+      expect(terms.has(card.answers[0])).toBe(true);
+      expect(card.choices).toHaveLength(4);
+      expect(card.choices?.every((choice) => terms.has(choice))).toBe(true);
+    }
+  });
+
   it("labels a decimal deck listed as a plain deck by grade and title", async () => {
     const data = copyFlashcardData();
-    data.grades[0].subjects[0].decks?.push({
+    data.catalog.grades[0].subjects[0].decks?.push({
       unit: "decimals",
       title: "Decimals",
       description: "",
       build: { type: "decimalOperations" }
     });
+    data.catalog.grades[0].subjects[0].decks?.push({
+      unit: "factors",
+      title: "Factors",
+      description: "",
+      build: { type: "calculationPractice", topic: "gcf" }
+    });
     const deck = await resolveDeck(option("2-math-decimals", data), data);
     expect(deck).toMatchObject({ grade: 2, unitLabel: "2nd Grade · Decimals" });
+    const factors = await resolveDeck(option("2-math-factors", data), data);
+    expect(factors).toMatchObject({ grade: 2, unitLabel: "2nd Grade · Factors" });
+    expect(factors.cards.every((card) => card.prompt.startsWith("Greatest common factor"))).toBe(true);
+  });
+
+  it("builds written math cards to say or type, with no choices and the deck's operation", async () => {
+    const data = copyFlashcardData();
+    data.subjectData.math.cardSets = { doubles: { cards: { "2 + 2": "4", "3 + 3": "6" } } };
+    data.catalog.grades[0].subjects[0].decks?.push({
+      unit: "doubles",
+      title: "Doubles",
+      description: "",
+      interaction: "voice-or-type",
+      build: { type: "cards", sets: ["doubles"], operation: "addition" }
+    });
+    const deck = await resolveDeck(option("2-math-doubles", data), data);
+    expect(deck).toEqual({
+      subject: "math",
+      grade: 2,
+      operation: "addition",
+      cards: [
+        { prompt: "2 + 2", answers: ["4"] },
+        { prompt: "3 + 3", answers: ["6"] }
+      ]
+    });
   });
 
   it("rejects an unknown deck type or a deck with no cards", async () => {
     const data = copyFlashcardData();
-    data.grades[0].subjects[0].decks = [
+    data.catalog.grades[0].subjects[0].decks = [
       { unit: "mystery", title: "Mystery", description: "", build: { type: "mystery" } as never },
-      { unit: "empty", title: "Empty", description: "", build: { type: "cards", category: "nothing-here" } }
+      { unit: "empty", title: "Empty", description: "", build: { type: "cards", sets: ["nothing-here"] } }
     ];
     await expect(resolveDeck(option("2-math-mystery", data), data)).rejects.toThrow('Unknown deck type "mystery".');
     await expect(resolveDeck(option("2-math-empty", data), data)).rejects.toThrow('Deck "2-math-empty" has no cards.');

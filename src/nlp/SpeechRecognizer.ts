@@ -43,10 +43,9 @@ function isBenignSpeechRecognitionError(code: string): boolean {
 }
 
 function recognitionErrorMessage(event: Event): string | null {
-  const code =
-    typeof (event as SpeechRecognitionErrorEvent).error === "string"
-      ? (event as SpeechRecognitionErrorEvent).error
-      : "";
+  // A plain string: older browsers still send codes like "bad-grammar" that TypeScript's DOM types have dropped.
+  const { error } = event as Event & { error?: unknown };
+  const code = typeof error === "string" ? error : "";
 
   if (isBenignSpeechRecognitionError(code)) {
     return null;

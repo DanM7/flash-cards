@@ -1,5 +1,6 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from "svelte";
+  import HomeButton from "../components/HomeButton.svelte";
   import FlashCard from "../components/FlashCard.svelte";
   import type { Card, PlayText, SubjectDeck, TypingAndVoiceSettings } from "../data/CardTypes";
   import { AnswerInterpreter, type AnswerInterpretation } from "../nlp/AnswerInterpreter";
@@ -9,7 +10,7 @@
   export let autoMic = false;
   export let settings: TypingAndVoiceSettings;
   export let text: PlayText;
-  const dispatch = createEventDispatcher<{ back: void }>();
+  const dispatch = createEventDispatcher<{ back: void; home: void }>();
 
   // Settings and wording are fixed for this screen, like the deck.
   const { encouragement, cardsBeforeBreak } = settings;
@@ -422,9 +423,10 @@
 
 <section class="fc-play">
   <header class="fc-play__header">
-    <button type="button" class="fc-btn fc-btn--quiet fc-play__back" on:click={() => dispatch("back")}>
-      ← Home
-    </button>
+    <div class="fc-play__nav">
+      <HomeButton on:click={() => dispatch("home")} />
+      <button type="button" class="fc-btn fc-btn--quiet" on:click={() => dispatch("back")}>← Back</button>
+    </div>
     <div class="fc-play__titles">
       <h2 class="fc-play__title">{title}</h2>
       <p class="fc-play__subtitle">{playSubtitle}</p>
@@ -705,13 +707,16 @@
 
   .fc-play__header {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: var(--fc-space-sm);
   }
 
-  .fc-play__back {
+  .fc-play__nav {
     justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: var(--fc-space-sm);
   }
 
   .fc-play__titles {

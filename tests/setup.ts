@@ -5,6 +5,8 @@ import { setReducedMotion } from "./helpers/animation";
 beforeEach(() => {
   // jsdom has no matchMedia; default to a browser that allows motion.
   setReducedMotion(false);
+  // jsdom doesn't implement scrolling.
+  vi.stubGlobal("scrollTo", vi.fn());
 });
 
 afterEach(() => {

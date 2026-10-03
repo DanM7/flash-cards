@@ -53,7 +53,7 @@ describe("App", () => {
 
   it("starts on the home screen with a footer linking to the project page", async () => {
     await renderApp();
-    expect(fetch).toHaveBeenCalledWith("/src/data/flashcards.json");
+    expect(fetch).toHaveBeenCalledWith("/flashcards.json");
     expect(screen.getByRole("heading", { name: "Flash Cards" })).toBeInTheDocument();
     expect(shell()).not.toHaveClass("fc-shell--fit");
     const footer = screen.getByRole("contentinfo");
@@ -65,7 +65,7 @@ describe("App", () => {
 
   it("opens a typing deck, records it in the URL, and goes back home", async () => {
     await renderApp();
-    await click(/^Grade 4/);
+    await click(/^4th Grade/);
     await startFromTopic("Speech & Typing", /Typing/);
     expect(await screen.findByRole("heading", { name: "Speech & Typing" })).toBeInTheDocument();
     expect(screen.getByText("Typing")).toBeInTheDocument();
@@ -73,9 +73,30 @@ describe("App", () => {
     // 4th grade has no subject step, so the subject stays blank.
     expect(params()).toEqual({ grade: "4", subject: "", mode: "typing", unit: "sight-words" });
 
-    await click("← Home");
+    await click("← Back");
     expect(screen.getByRole("heading", { name: "4th Grade" })).toBeInTheDocument();
     expect(params()).toEqual({ grade: "4", subject: "", mode: "", unit: "" });
+  });
+
+  it("has a house button to the grade list everywhere but the grade list itself", async () => {
+    const home = () => screen.queryByRole("button", { name: "Home" });
+    await renderApp();
+    expect(home()).toBeNull();
+
+    await click(/^6th Grade/);
+    await click(/French/);
+    expect(params()).toMatchObject({ grade: "6", subject: "french" });
+    await fireEvent.click(home() as HTMLElement);
+    expect(screen.getByRole("heading", { name: "Flash Cards" })).toBeInTheDocument();
+    expect(home()).toBeNull();
+    expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
+
+    await navigate("?grade=2&subject=math&mode=practice&unit=addition");
+    expect(await screen.findByText("2nd Grade · Addition · Practice")).toBeInTheDocument();
+    await fireEvent.click(home() as HTMLElement);
+    expect(screen.getByRole("heading", { name: "Flash Cards" })).toBeInTheDocument();
+    expect(shell()).not.toHaveClass("fc-shell--fit");
+    expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
   });
 
   it("opens a deck with the microphone", async () => {
@@ -91,7 +112,7 @@ describe("App", () => {
     expect(await screen.findByText("2nd Grade · Subtraction · Timed")).toBeInTheDocument();
     expect(params()).toEqual({ grade: "2", subject: "math", mode: "timed", unit: "subtraction" });
 
-    await click("← Home");
+    await click("← Back");
     await startFromTopic("Addition", "Practice");
     expect(await screen.findByText("2nd Grade · Addition · Practice")).toBeInTheDocument();
     expect(params()).toEqual({ grade: "2", subject: "math", mode: "practice", unit: "addition" });

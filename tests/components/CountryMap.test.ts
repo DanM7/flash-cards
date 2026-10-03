@@ -20,7 +20,8 @@ describe("CountryMap", () => {
     expect(viewBox(svg)[2]).toBeGreaterThan(600);
     expect(svg.querySelector(".map-card__target")?.getAttribute("d")).toMatch(/^M/);
     expect(svg.querySelector(".map-card__marker")).toBeNull();
-  });
+    // The first test in the file pays for loading and indexing the world atlas, which is slow on a busy machine.
+  }, 15_000);
 
   it("uses a default cue", async () => {
     installFrames();

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher, onDestroy } from "svelte";
   import CountryMap from "../../components/CountryMap.svelte";
+  import HomeButton from "../../components/HomeButton.svelte";
   import FlashCard from "../../components/FlashCard.svelte";
   import ListenCard from "../../components/ListenCard.svelte";
   import type { Card, MultipleChoiceSettings, PlayText, SubjectDeck } from "../../data/CardTypes";
@@ -12,7 +13,7 @@
   export let text: PlayText;
   /** Language of cards that don't set their own. */
   export let language: string;
-  const dispatch = createEventDispatcher<{ back: void }>();
+  const dispatch = createEventDispatcher<{ back: void; home: void }>();
 
   // Settings and wording are fixed for this screen, like the deck.
   const { encouragement, scoring, speech } = settings;
@@ -185,11 +186,7 @@
   const listen = Boolean(deck.listen) && canSpeak();
 
   const playSubtitleBase =
-    (deck.subject === "math" ||
-      deck.subject === "science" ||
-      deck.subject === "french" ||
-      deck.subject === "geography") &&
-    deck.unitLabel
+    "unitLabel" in deck && deck.unitLabel
       ? deck.unitLabel
       : deck.subject === "math" && deck.grade
         ? `Grade ${deck.grade}`
@@ -307,9 +304,10 @@
 
 <section class="fc-play">
   <header class="fc-play__header">
-    <button type="button" class="fc-btn fc-btn--quiet fc-play__back" on:click={() => dispatch("back")}>
-      ← Home
-    </button>
+    <div class="fc-play__nav">
+      <HomeButton on:click={() => dispatch("home")} />
+      <button type="button" class="fc-btn fc-btn--quiet" on:click={() => dispatch("back")}>← Back</button>
+    </div>
     <div class="fc-play__titles">
       <h2 class="fc-play__title">{title}</h2>
       <p class="fc-play__subtitle">{playSubtitle}</p>
@@ -532,13 +530,16 @@
 
   .fc-play__header {
     display: grid;
-    grid-template-columns: auto 1fr;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     gap: var(--fc-space-sm);
   }
 
-  .fc-play__back {
+  .fc-play__nav {
     justify-self: start;
+    display: flex;
+    align-items: center;
+    gap: var(--fc-space-sm);
   }
 
   .fc-play__titles {

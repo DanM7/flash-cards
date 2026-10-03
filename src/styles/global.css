@@ -51,8 +51,14 @@
   box-sizing: border-box;
 }
 
+/* The page still scrolls, but without a scrollbar that appears and disappears and shifts the layout between screens. */
 html {
   font-size: 106%;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
 }
 
 body {

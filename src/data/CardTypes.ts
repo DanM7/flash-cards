@@ -1,4 +1,7 @@
+import type { FrenchColors } from "./subjects/french/colors";
 import type { Continent } from "./subjects/geography/atlas";
+import type { Geography } from "./subjects/geography/countriesDeck";
+import type { CalculationPracticeRules, CalculationTopic } from "./subjects/math/calculationPractice";
 import type { DecimalOperationsRules } from "./subjects/math/decimalOperations";
 import type { Grade5Rules, Grade5Topic } from "./subjects/math/grade5";
 import type { WholeNumberRules, WholeNumberTopic } from "./subjects/math/wholeNumberOperations";
@@ -12,6 +15,9 @@ export type SubjectType =
   | "vocabulary"
   | "custom";
 
+/** A grade number like 6, or a name for a track that isn't a school grade, like "computer-science". */
+export type GradeKey = number | string;
+
 export type MathOperation =
   | "addition"
   | "subtraction"
@@ -20,7 +26,8 @@ export type MathOperation =
   | "mixed"
   | "fractions"
   | "decimal-operations"
-  | "order-of-operations";
+  | "order-of-operations"
+  | "calculation-practice";
 
 export type InteractionMode = "voice-or-type" | "multiple-choice";
 
@@ -36,31 +43,31 @@ export interface Card {
    * zoomed out to `continent` at the widest.
    */
   map?: { countryId: string; continent?: Continent };
-  /** BCP 47 language of the prompt when it isn't the file's default `language`, e.g. "fr-FR". */
+  /** BCP 47 language of the prompt when it isn't the default `appSettings.language`, e.g. "fr-FR". */
   lang?: string;
   acceptableTranscripts?: string[];
   ambiguousTranscripts?: string[];
 }
 
-/** One entry in flashcards.json. */
-export interface Flashcard {
-  question: string;
-  answer: string;
-  /** Which deck the card belongs to, e.g. "science-cells-unit1". */
-  category?: string;
-  /** Other answers that also count, typed or spoken (e.g. "five" for "5"). */
-  acceptedAnswers?: string[];
-  /** Multiple-choice options, including the answer. With more than four, three wrong ones are picked each play. */
-  choices?: string[];
-  hint?: string;
-  /** ISO numeric id of the country to highlight on a map. */
-  countryId?: string;
-  /** The map zooms out to this continent at the widest. */
-  continent?: Continent;
-  /** BCP 47 language of the question when it isn't the file's default `language`, e.g. "fr-FR". */
+/** A written card's answer, or its answer with extras. Without an `answer`, the answer is the question itself. */
+export type CardEntry =
+  | string
+  | {
+      answer?: string;
+      /** Other answers that also count, typed or spoken. */
+      acceptedAnswers?: string[];
+      /** Wrong answers for this card alone (like look-alike words), used instead of the set's shared pool. */
+      incorrectAnswers?: string[];
+      hint?: string;
+    };
+
+/** Written cards that play together, keyed by question. */
+export interface CardSet {
+  /** BCP 47 language of the questions when it isn't the default `appSettings.language`, e.g. "fr-FR". */
   lang?: string;
-  /** Extra words speech recognition may hear for the answer (e.g. "four" for "for"). */
-  acceptableTranscripts?: string[];
+  /** Wrong answers to mix in with the other cards' answers. */
+  additionalIncorrectAnswers?: string[];
+  cards: Record<string, CardEntry>;
 }
 
 /** Limits and mix for the generated math decks (number sizes, operations, how often each kind comes up). */
@@ -68,6 +75,7 @@ export interface MathRules {
   wholeNumberOperations: WholeNumberRules;
   grade5: Grade5Rules;
   decimalOperations: DecimalOperationsRules;
+  calculationPractice: CalculationPracticeRules;
 }
 
 /** A subject's name and tile color, the same in every grade. */
@@ -80,10 +88,11 @@ export interface SubjectInfo {
 /** How a deck gets its cards each time it's played. */
 export type DeckBuild =
   | {
-      /** Written cards from one flashcards.json category. */
+      /** Written cards from the deck subject's `cardSets` in `subjectData`. */
       type: "cards";
-      category: string;
-      /** Which play screen labels and cues to use; defaults to the subject (e.g. "sight-words" for reading). */
+      /** Keys in that subject's `cardSets`. Each set's cards draw wrong answers only from that set. */
+      sets: string[];
+      /** Which play screen labels and cues to use; defaults to the subject (e.g. "vocabulary" for reading). */
       deckType?: SubjectType;
       /** Required for math decks. */
       operation?: MathOperation;
@@ -93,8 +102,14 @@ export type DeckBuild =
   | { type: "wholeNumberOperations"; topic: WholeNumberTopic }
   | { type: "grade5"; topic: Grade5Topic }
   | { type: "decimalOperations" }
-  /** Map cards for the countries in these categories, with wrong answers from nearby countries. */
-  | { type: "countries"; categories: string[] };
+  /** Simplifying fractions, greatest common factors, and least common multiples; every topic mixed when left out. */
+  | { type: "calculationPractice"; topic?: CalculationTopic }
+  /** The grade's list in `subjectData.reading.sightWords`. */
+  | { type: "sightWords" }
+  /** Three cards per color in `subjectData.french.colors`. */
+  | { type: "frenchColors" }
+  /** Map cards for the countries in these `subjectData.geography.regions` (every region when left out). */
+  | { type: "countries"; regions?: string[] };
 
 export interface DeckEntry {
   /**
@@ -110,13 +125,18 @@ export interface DeckEntry {
   build: DeckBuild;
 }
 
-/** A numbered unit (or a section like a final review); units without a deck are listed as coming soon. */
-export interface UnitEntry {
-  /** "Unit 1", "Final", ... */
-  label: string;
-  title: string;
-  deck?: Omit<DeckEntry, "title">;
-}
+/**
+ * A unit, or a section like a final review. Units without a deck are listed as coming soon, and can
+ * be written as just their title.
+ */
+export type UnitEntry =
+  | string
+  | {
+      /** "Final" and the like; numbered units leave it out and count themselves ("Unit 1", "Unit 2", ...). */
+      label?: string;
+      title: string;
+      deck?: Omit<DeckEntry, "title">;
+    };
 
 export interface GradeSubject {
   /** Key in `subjects`. */
@@ -134,7 +154,7 @@ export interface GradeSubject {
 }
 
 export interface Grade {
-  grade: number;
+  grade: GradeKey;
   label: string;
   /** sky, violet, teal, rose, amber, or any subject color. */
   color: string;
@@ -196,26 +216,45 @@ export interface PlayText {
 }
 
 /** Everything in flashcards.json. */
-export interface FlashcardData {
+/** How the app behaves and what it says, apart from any one subject's content. */
+export interface AppSettings {
   /** BCP 47 language every flashcard is in unless it sets its own `lang`. */
   language: string;
   home: { tagline: string; intro: string };
   multipleChoice: MultipleChoiceSettings;
   typingAndVoice: TypingAndVoiceSettings;
-  geography: {
-    /** Wrong answers on a map card come from this many of the closest countries in the deck. */
-    nearbyCountries: number;
-  };
   playText: { default: PlayText } & Record<string, Partial<PlayText>>;
+}
+
+/** What the menus offer: subject names and colors, and each grade's subjects and decks. */
+export interface Catalog {
   subjects: Record<string, SubjectInfo>;
   grades: Grade[];
-  mathRules: MathRules;
-  cards: Flashcard[];
+}
+
+/** One subject's content, keyed like `catalog.subjects`. Any subject can have written card sets. */
+export interface SubjectContent {
+  cardSets?: Record<string, CardSet>;
+}
+
+export interface SubjectData {
+  [subject: string]: SubjectContent;
+  math: SubjectContent & MathRules;
+  /** `sightWords` maps a grade to its sight words. */
+  reading: SubjectContent & { sightWords: Record<string, string[]> };
+  french: SubjectContent & { colors: FrenchColors };
+  geography: SubjectContent & Geography;
+}
+
+export interface FlashcardData {
+  appSettings: AppSettings;
+  catalog: Catalog;
+  subjectData: SubjectData;
 }
 
 /** Grade and screen label every built deck gets from its catalog entry. */
 export interface DeckInfo {
-  grade: number;
+  grade: GradeKey;
   unitLabel: string;
 }
 
@@ -228,38 +267,38 @@ interface BaseDeck {
 
 export interface SightWordsDeck extends BaseDeck {
   subject: "sight-words";
-  grade: number;
+  grade: GradeKey;
 }
 
 export interface MathDeck extends BaseDeck {
   subject: "math";
   operation: MathOperation;
-  grade?: number;
+  grade?: GradeKey;
   unitLabel?: string;
 }
 
 export interface ScienceDeck extends BaseDeck {
   subject: "science";
-  grade: number;
+  grade: GradeKey;
   unitLabel: string;
 }
 
 export interface FrenchDeck extends BaseDeck {
   subject: "french";
-  grade: number;
+  grade: GradeKey;
   unitLabel: string;
 }
 
 export interface GeographyDeck extends BaseDeck {
   subject: "geography";
-  grade: number;
+  grade: GradeKey;
   unitLabel: string;
 }
 
 export interface VocabularyDeck extends BaseDeck {
   subject: "vocabulary";
   topic?: string;
-  grade?: number;
+  grade?: GradeKey;
 }
 
 export interface CustomDeck extends BaseDeck {

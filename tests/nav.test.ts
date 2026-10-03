@@ -42,6 +42,14 @@ describe("writeNav", () => {
     expect(readNav().grade).toBe("4");
   });
 
+  it("scrolls back to the top on a push, but not on a replace", () => {
+    setUrl("/?grade=&subject=&mode=&unit=");
+    writeNav({ grade: "3" }, "replace");
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    writeNav({ grade: "6" }, "push");
+    expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+  });
+
   it("skips writing when nothing would change", () => {
     setUrl("/?grade=6&subject=&mode=&unit=");
     const push = vi.spyOn(history, "pushState");

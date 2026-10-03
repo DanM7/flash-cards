@@ -14,8 +14,7 @@ import {
 import type { DeckBuild } from "../../src/data/CardTypes";
 import { unitsFor } from "../../src/data/decks";
 import { createCountriesDeck } from "../../src/data/subjects/geography/countriesDeck";
-import { flashcardsIn } from "../../src/data/fromFlashcards";
-import { flashcardData, flashcards } from "../helpers/flashcards";
+import { flashcardData } from "../helpers/flashcards";
 
 const FRANCE = "250";
 const NAURU = "520";
@@ -28,45 +27,57 @@ const pathPoints = (d: string): [number, number][] =>
   [...d.matchAll(/(-?[\d.]+(?:e-?\d+)?),(-?[\d.]+(?:e-?\d+)?)/g)].map((match) => [Number(match[1]), Number(match[2])]);
 
 const info = { grade: 6, unitLabel: "Label" };
-const choices = { wrongChoices: 3, nearbyCountries: 6 };
+const { geography } = flashcardData.subjectData;
 
-const deckFor = (category: string) => createCountriesDeck(flashcards, [`geography-${category}`], info, choices);
+const deckFor = (region: string) => createCountriesDeck(geography, [region], info, 3);
 
-/** The regional geography units in flashcards.json, without the final. */
+/** The regions of the regional geography units in flashcards.json, without the final. */
 const regionalUnits = (unitsFor(flashcardData, 6, "geography") ?? [])
   .filter((unit) => unit.label !== "Final")
-  .map((unit) => (unit.option?.build as Extract<DeckBuild, { type: "countries" }>).categories);
+  .map((unit) => (unit.option?.build as Extract<DeckBuild, { type: "countries" }>).regions ?? []);
 
 describe("geography units", () => {
   it("cover 194 countries, each once in one unit, all present in the map data", () => {
     expect(regionalUnits).toHaveLength(11);
-    const ids = regionalUnits.flatMap((categories) => {
-      expect(categories).toHaveLength(1);
-      return flashcardsIn(flashcards, categories[0]).map((card) => card.countryId as string);
+    const ids = regionalUnits.flatMap((regions) => {
+      expect(regions).toHaveLength(1);
+      return geography.regions[regions[0]].countries.map((country) => country.id);
     });
     expect(ids).toHaveLength(194);
     expect(new Set(ids).size).toBe(194);
     expect(ids.every(hasCountry)).toBe(true);
   });
 
-  it("give every country a continent for the zoomed-out map", () => {
-    const countries = flashcards.filter((card) => card.countryId);
-    expect(countries.every((card) => card.continent)).toBe(true);
+  it("name every country's capital", () => {
+    const countries = Object.values(geography.regions).flatMap((region) => region.countries);
+    expect(new Set(countries.map((country) => country.name)).size).toBe(countries.length);
+    for (const country of countries) {
+      expect(country.capital.trim(), country.name).not.toBe("");
+    }
+    const capitalOf = (name: string) => countries.find((country) => country.name === name)?.capital;
+    expect(capitalOf("France")).toBe("Paris");
+    expect(capitalOf("Australia")).toBe("Canberra");
+  });
+
+  it("include every region, with the final drawing from all of them", () => {
+    expect(regionalUnits.flat().sort()).toEqual(Object.keys(geography.regions).sort());
+    const final = unitsFor(flashcardData, 6, "geography")?.find((unit) => unit.label === "Final");
+    expect(final?.option?.build).toEqual({ type: "countries" });
   });
 });
 
 describe("createCountriesDeck", () => {
   it("builds one map card per country with nearby wrong answers from the same deck", () => {
-    for (const [category] of regionalUnits) {
-      const deck = createCountriesDeck(flashcards, [category], info, choices);
-      const countries = flashcardsIn(flashcards, category);
-      const names = new Set(countries.map((card) => card.answer));
+    for (const [region] of regionalUnits) {
+      const deck = deckFor(region);
+      const { continent, countries } = geography.regions[region];
+      const idByName = new Map(countries.map((country) => [country.name, country.id]));
+      const names = new Set(idByName.keys());
       expect(deck).toMatchObject({ subject: "geography", grade: 6, unitLabel: "Label" });
       expect(deck.cards).toHaveLength(names.size);
       for (const card of deck.cards) {
-        expect(card.prompt).toBe("Which country is highlighted?");
-        expect(card.map?.countryId).toBeTruthy();
-        expect(card.map?.continent).toBe(countries[0].continent);
+        expect(card.prompt).toBe(geography.question);
+        expect(card.map).toEqual({ countryId: idByName.get(card.answers[0]), continent });
         expect(new Set(card.choices).size).toBe(4);
         expect(card.choices?.every((choice) => names.has(choice))).toBe(true);
         expect(card.hint).toMatch(new RegExp(`^It starts with "${card.answers[0][0]}"`));
@@ -75,8 +86,8 @@ describe("createCountriesDeck", () => {
   });
 
   it("hints with bordering countries, preferring ones in the same deck", () => {
-    const hintFor = (category: string, name: string) =>
-      deckFor(category).cards.find((card) => card.answers[0] === name)?.hint;
+    const hintFor = (region: string, name: string) =>
+      deckFor(region).cards.find((card) => card.answers[0] === name)?.hint;
 
     expect(hintFor("europe-west", "Portugal")).toBe('It starts with "P" and borders Spain.');
     expect(hintFor("europe-west", "Iceland")).toBe('It starts with "I" and has no land borders.');
@@ -85,20 +96,30 @@ describe("createCountriesDeck", () => {
     expect(hintFor("europe-west", "France")).toMatch(/^It starts with "F" and borders \S.* and \S/);
   });
 
-  it("builds no cards for a category without countries", () => {
+  it("builds no cards for an unknown region, and skips countries the map doesn't have", () => {
     expect(deckFor("atlantis").cards).toEqual([]);
+    const withUnknown = {
+      ...geography,
+      regions: {
+        test: {
+          continent: "europe" as const,
+          countries: [
+            { name: "France", id: FRANCE, capital: "Paris" },
+            { name: "Nowhere", id: "999", capital: "Nowhere City" }
+          ]
+        }
+      }
+    };
+    expect(createCountriesDeck(withUnknown, ["test"], info, 3).cards.map((card) => card.answers[0])).toEqual(["France"]);
   });
 
-  it("builds one deck from several categories", () => {
-    const deck = createCountriesDeck(flashcards, regionalUnits.flat(), info, choices);
+  it("builds one deck from every region when none are named", () => {
+    const deck = createCountriesDeck(geography, undefined, info, 3);
     expect(new Set(deck.cards.map((card) => card.answers[0])).size).toBe(194);
   });
 
   it("follows the wrong-answer count and nearby-country pool it's given", () => {
-    const deck = createCountriesDeck(flashcards, ["geography-europe-west"], info, {
-      wrongChoices: 1,
-      nearbyCountries: 1
-    });
+    const deck = createCountriesDeck({ ...geography, nearbyCountries: 1 }, ["europe-west"], info, 1);
     const portugal = deck.cards.find((card) => card.answers[0] === "Portugal");
     expect(portugal?.choices).toHaveLength(2);
     expect(portugal?.choices).toEqual(expect.arrayContaining(["Portugal", "Spain"]));
