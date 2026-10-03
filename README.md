@@ -154,7 +154,7 @@ Written cards live in their subject's `cardSets`, keyed by set name, like `subje
 }
 ```
 
-- The key is what's shown and the value is what gets picked. The Angular sets are written definition → term (`"A stream of asynchronous values.": "Observable"`), so the choices are short terms.
+- The key is what's shown and the value is what gets picked. A set with `"show": "value"` turns that around for plain text cards: the Angular and Azure sets are written term → definition (`"Observable": "A stream of asynchronous values."`), but show the definition and ask for the term, so the choices are short terms. Cards written as objects always show their key.
 - An answer is a string, or an object with any of `answer` (left out, the question is the answer, as in vocabulary), `acceptedAnswers` (other answers that count), `incorrectAnswers`, and `hint`.
 - **Wrong answers** are the other cards' answers in the same set (or sets, for a deck built from several), plus the set's optional `additionalIncorrectAnswers`. They're picked fresh each play, spread so every answer shows up about equally often across the deck, and never include the card's own answer (ignoring case). A card with its own `incorrectAnswers` uses those instead; vocabulary does this, so wrong answers look alike but never sound the same.
 - Every card is in English (`appSettings.language`, `"en-US"`) unless its set has a `lang`, like `"fr-FR"` for the French alphabet. The language picks the voice and pronunciation when a card is read aloud.

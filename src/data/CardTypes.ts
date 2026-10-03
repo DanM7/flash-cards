@@ -61,10 +61,16 @@ export type CardEntry =
       hint?: string;
     };
 
-/** Written cards that play together, keyed by question. */
+/** Written cards that play together, keyed by question (or by answer, with `show: "value"`). */
 export interface CardSet {
   /** BCP 47 language of the questions when it isn't the default `appSettings.language`, e.g. "fr-FR". */
   lang?: string;
+  /**
+   * Which side of a plain `"key": "value"` card is shown; the other side is the answer. Defaults to "key".
+   * Term → definition sets use "value" to show the definition and ask for the term.
+   * Cards written as objects always show their key.
+   */
+  show?: "key" | "value";
   /** Wrong answers to mix in with the other cards' answers. */
   additionalIncorrectAnswers?: string[];
   cards: Record<string, CardEntry>;

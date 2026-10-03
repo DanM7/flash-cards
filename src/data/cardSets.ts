@@ -9,12 +9,14 @@ interface WrittenCard {
   hint?: string;
 }
 
-const toWritten = (question: string, entry: CardEntry): WrittenCard =>
+const toWritten = (key: string, entry: CardEntry, showValue: boolean): WrittenCard =>
   typeof entry === "string"
-    ? { question, answer: entry, acceptedAnswers: [] }
+    ? showValue
+      ? { question: entry, answer: key, acceptedAnswers: [] }
+      : { question: key, answer: entry, acceptedAnswers: [] }
     : {
-        question,
-        answer: entry.answer ?? question,
+        question: key,
+        answer: entry.answer ?? key,
         acceptedAnswers: entry.acceptedAnswers ?? [],
         incorrectAnswers: entry.incorrectAnswers,
         hint: entry.hint
@@ -28,7 +30,8 @@ export const setSize = (set: CardSet): number => Object.keys(set.cards).length;
  * spread evenly across the set.
  */
 export function setCards(set: CardSet, wrongChoices?: number): Card[] {
-  const written = Object.entries(set.cards).map(([question, entry]) => toWritten(question, entry));
+  const showValue = set.show === "value";
+  const written = Object.entries(set.cards).map(([key, entry]) => toWritten(key, entry, showValue));
   const answersOf = (card: WrittenCard) => [card.answer, ...card.acceptedAnswers];
   const shared = written.filter((card) => !card.incorrectAnswers);
   const spread =

@@ -85,6 +85,36 @@ describe("setCards", () => {
   });
 });
 
+describe("setCards with show: value", () => {
+  it("shows each value and asks for its key, with other keys as wrong answers", () => {
+    const set: CardSet = {
+      show: "value",
+      cards: {
+        Component: "A class that controls a view.",
+        Pipe: "Transforms values in a template.",
+        Service: "Shares logic across components.",
+        Directive: "Adds behavior to elements.",
+        Module: { answer: "NgModule", hint: "Objects always show their key." }
+      }
+    };
+    const cards = setCards(set, 3);
+    expect(cards.map((card) => [card.prompt, card.answers])).toEqual([
+      ["A class that controls a view.", ["Component"]],
+      ["Transforms values in a template.", ["Pipe"]],
+      ["Shares logic across components.", ["Service"]],
+      ["Adds behavior to elements.", ["Directive"]],
+      ["Module", ["NgModule"]]
+    ]);
+    const answers = ["Component", "Pipe", "Service", "Directive", "NgModule"];
+    for (const card of cards) {
+      expect(card.choices).toHaveLength(4);
+      expect(card.choices).toContain(card.answers[0]);
+      expect(card.choices?.every((choice) => answers.includes(choice))).toBe(true);
+    }
+    expect(setCards({ ...set, show: "key" })[0]).toEqual({ prompt: "Component", answers: ["A class that controls a view."] });
+  });
+});
+
 describe("flashcards.json card sets", () => {
   it("has a non-empty set for every set a deck draws from", () => {
     const sets = deckOptions(flashcardData).flatMap((option) =>

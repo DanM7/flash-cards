@@ -315,13 +315,18 @@ describe("resolveDeck", () => {
     const deck = await resolveDeck(option, flashcardData);
     expect(deck).toMatchObject({ subject, grade: "computer-science" });
     expect("unitLabel" in deck && deck.unitLabel).toBe(`Computer Science · ${option.title}`);
-    const terms = new Set(Object.values(flashcardData.subjectData[subject].cardSets?.[set].cards ?? {}));
+    // Written term → definition, played definition → term.
+    const cardSet = flashcardData.subjectData[subject].cardSets?.[set];
+    expect(cardSet?.show).toBe("value");
+    const definitionOf = new Map(Object.entries(cardSet?.cards ?? {}));
+    expect(new Set(definitionOf.values()).size).toBe(size);
     expect(deck.cards).toHaveLength(size);
     for (const card of deck.cards) {
       expect(card.prompt).toMatch(/\.$/);
-      expect(terms.has(card.answers[0])).toBe(true);
+      expect(definitionOf.get(card.answers[0])).toBe(card.prompt);
       expect(card.choices).toHaveLength(4);
-      expect(card.choices?.every((choice) => terms.has(choice))).toBe(true);
+      expect(new Set(card.choices).size).toBe(4);
+      expect(card.choices?.every((choice) => definitionOf.has(choice))).toBe(true);
     }
   });
 
