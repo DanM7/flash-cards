@@ -134,8 +134,8 @@ describe("deck catalog", () => {
       ["4-math-mixed", "multiple-choice"],
       ["4-geography-states", "multiple-choice"],
       ["4-geography-state-capitals", "multiple-choice"],
-      ["4-reading-sight-words", "voice-or-type"],
-      ["4-reading-vocabulary", "multiple-choice"]
+      ["4-reading-vocabulary", "multiple-choice"],
+      ["4-reading-sight-words", "voice-or-type"]
     ]);
   });
 

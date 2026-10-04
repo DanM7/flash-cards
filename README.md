@@ -29,7 +29,7 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | 3rd | Reading | Vocabulary (hear a word, find it among look-alikes) |
 | 4th | Math | Addition, Subtraction, Multiplication, Division, All Four Operations (1- and 2-digit numbers: two 2-digit numbers added or subtracted, 2-digit × 1-digit, 2-digit ÷ 1-digit) |
 | 4th | Geography | States, State Capitals (see below) |
-| 4th | Reading | Speech & Typing (sight words, typing or microphone), Vocabulary (hear a word, find it among look-alikes) |
+| 4th | Reading | Vocabulary (hear a word, find it among look-alikes), Speech & Typing (sight words, typing or microphone) |
 | 5th | Math | Multi-Digit Multiplication, Long Division (with remainders), Fractions (unlike denominators, multiplying), Decimals, Order of Operations, Mixed Review |
 | 6th | Math | Unit 0: Calculation Practice (simplifying fractions, greatest common factor, least common multiple); Unit 1: Decimal Operations, one decimal and one whole number (88.88 ÷ 4), including money and measurement (Units 2–10 listed as coming soon) |
 | 6th | Science | Cells, Human Body, Genetics, Evolution, Environmental Science |

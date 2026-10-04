@@ -218,7 +218,7 @@ describe("home route", () => {
   it("shows a subject's grade-tile summary when it has no blurb of its own", async () => {
     const { component } = renderHome("?grade=4");
     expect(screen.getByText("Pick a subject.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Reading/ })).toHaveTextContent("Sight words out loud or typed, and words to spell by ear.");
+    expect(screen.getByRole("button", { name: /Reading/ })).toHaveTextContent("More words to find by ear, and words to spell or answer with a mic.");
 
     const renamed = copyFlashcardData();
     renamed.catalog.subjects.math.label = "Arithmetic";
