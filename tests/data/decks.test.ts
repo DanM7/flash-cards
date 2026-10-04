@@ -56,7 +56,11 @@ describe("grades", () => {
   });
 
   it("only offers a subject step for grades that ask for one", () => {
-    expect(subjectStepFor(flashcardData, 4)).toBeUndefined();
+    expect(flashcardData.catalog.grades.every((grade) => grade.pickSubject)).toBe(true);
+    expect(subjectStepFor(flashcardData, 4)?.map((entry) => entry.subject)).toEqual(["math", "geography", "reading"]);
+    const data = copyFlashcardData();
+    delete data.catalog.grades[2].pickSubject;
+    expect(subjectStepFor(data, 4)).toBeUndefined();
     expect(subjectStepFor(flashcardData, 9)).toBeUndefined();
     expect(subjectStepFor(flashcardData, 6)?.map((entry) => entry.subject)).toEqual([
       "math",
@@ -123,11 +127,15 @@ describe("deck catalog", () => {
   it("filters decks by grade", () => {
     const grade4 = getDecksForGrade(flashcardData, 4);
     expect(grade4.map((entry) => [entry.id, entry.interaction])).toEqual([
-      ["4-reading-sight-words", "voice-or-type"],
-      ["4-reading-vocabulary", "multiple-choice"],
-      ["4-math-addition-facts", "voice-or-type"],
+      ["4-math-addition", "multiple-choice"],
+      ["4-math-subtraction", "multiple-choice"],
+      ["4-math-multiplication", "multiple-choice"],
+      ["4-math-division", "multiple-choice"],
+      ["4-math-mixed", "multiple-choice"],
       ["4-geography-states", "multiple-choice"],
-      ["4-geography-state-capitals", "multiple-choice"]
+      ["4-geography-state-capitals", "multiple-choice"],
+      ["4-reading-sight-words", "voice-or-type"],
+      ["4-reading-vocabulary", "multiple-choice"]
     ]);
   });
 
@@ -256,23 +264,20 @@ describe("resolveDeck", () => {
     }
   }, 60_000);
 
-  it("builds the 4th grade sight words and generated addition facts", async () => {
+  it("builds the 4th grade sight words", async () => {
     const sightWords = await resolveDeck(option("4-reading-sight-words"), flashcardData);
     expect(sightWords).toMatchObject({ subject: "sight-words", grade: 4 });
     expect(sightWords).not.toHaveProperty("unitLabel");
-    expect(sightWords.cards[0]).toEqual({ prompt: "a", answers: ["a"] });
-    expect(sightWords.cards).toHaveLength(100);
+    const words = flashcardData.subjectData.reading.sightWords["4"];
+    expect(words.length).toBeGreaterThanOrEqual(20);
+    expect(sightWords.cards).toEqual(words.map((word) => ({ prompt: word, answers: [word] })));
     expect(sightWords).not.toHaveProperty("listen");
+  });
 
-    const addition = await resolveDeck(option("4-math-addition-facts"), flashcardData);
-    expect(addition).toMatchObject({ subject: "math", operation: "addition", grade: 4 });
-    expect(addition.cards).toHaveLength(flashcardData.subjectData.math.wholeNumberOperations.deckSize);
-    for (const card of addition.cards) {
-      const [a, b] = card.prompt.split(" + ").map(Number);
-      expect([a, b].every((n) => n >= 1 && n <= 9), card.prompt).toBe(true);
-      expect(card.answers).toEqual([String(a + b)]);
-      expect(a + b).toBeLessThanOrEqual(10);
-    }
+  it("offers every math deck as multiple choice", () => {
+    const math = deckOptions(flashcardData).filter((entry) => entry.subject === "math");
+    expect(math.length).toBeGreaterThan(0);
+    expect(math.every((entry) => entry.interaction === "multiple-choice")).toBe(true);
   });
 
   it("has no sight words for a grade the file doesn't list them for", async () => {
@@ -282,17 +287,20 @@ describe("resolveDeck", () => {
   });
 
   it.each([
-    ["3-reading-vocabulary", 3, ["house", "friend", "light", "were"]],
-    ["4-reading-vocabulary", 4, ["quiet", "through", "breathe", "lose"]]
-  ])("reads the %s words aloud, to be found among look-alikes", async (id, grade, words) => {
+    ["2-reading-vocabulary", 2],
+    ["3-reading-vocabulary", 3],
+    ["4-reading-vocabulary", 4]
+  ])("reads the %s words aloud, to be found among look-alikes, at least two rounds' worth", async (id, grade) => {
     const vocabulary = await resolveDeck(option(id), flashcardData);
     expect(vocabulary).toMatchObject({ subject: "vocabulary", grade, listen: true });
-    expect(vocabulary.cards.map((card) => card.prompt)).toEqual(words);
+    expect(vocabulary.cards.length).toBeGreaterThanOrEqual(2 * flashcardData.appSettings.multipleChoice.roundSize);
     for (const card of vocabulary.cards) {
       expect(card.answers).toEqual([card.prompt]);
-      expect(card.choices).toHaveLength(4);
+      expect(new Set(card.choices).size, card.prompt).toBe(4);
       expect(card.hint).toContain("___");
-      expect(card.hint).not.toContain(card.prompt);
+      // Whole words only, so short words like "a" and "I" can still have hints.
+      const hintWords = (card.hint ?? "").toLowerCase().split(/[^a-z']+/);
+      expect(hintWords, card.prompt).not.toContain(card.prompt.toLowerCase());
     }
   });
 
@@ -359,7 +367,7 @@ describe("resolveDeck", () => {
     expect(factors.cards.every((card) => card.prompt.startsWith("Greatest common factor"))).toBe(true);
   });
 
-  it("builds written math cards to say or type, with no choices and the deck's operation", async () => {
+  it("plays written math cards as multiple choice with the deck's operation, even if the file asks for typing", async () => {
     const data = copyFlashcardData();
     data.subjectData.math.cardSets = { doubles: { cards: { "2 + 2": "4", "3 + 3": "6" } } };
     data.catalog.grades[0].subjects[0].decks?.push({
@@ -369,14 +377,32 @@ describe("resolveDeck", () => {
       interaction: "voice-or-type",
       build: { type: "cards", sets: ["doubles"], operation: "addition" }
     });
+    expect(option("2-math-doubles", data).interaction).toBe("multiple-choice");
     const deck = await resolveDeck(option("2-math-doubles", data), data);
+    expect(deck).toMatchObject({ subject: "math", grade: 2, operation: "addition", unitLabel: "2nd Grade · Doubles" });
+    expect(deck.cards.map((card) => [card.prompt, card.answers, [...(card.choices ?? [])].sort()])).toEqual([
+      ["2 + 2", ["4"], ["4", "6"]],
+      ["3 + 3", ["6"], ["4", "6"]]
+    ]);
+  });
+
+  it("builds written cards to say or type with no choices", async () => {
+    const data = copyFlashcardData();
+    data.subjectData.reading.cardSets = { ...data.subjectData.reading.cardSets, spelling: { cards: { cat: "cat", dog: "dog" } } };
+    data.catalog.grades[1].subjects[1].decks?.push({
+      unit: "spelling",
+      title: "Spelling",
+      description: "",
+      interaction: "voice-or-type",
+      build: { type: "cards", sets: ["spelling"], deckType: "vocabulary" }
+    });
+    const deck = await resolveDeck(option("3-reading-spelling", data), data);
     expect(deck).toEqual({
-      subject: "math",
-      grade: 2,
-      operation: "addition",
+      subject: "vocabulary",
+      grade: 3,
       cards: [
-        { prompt: "2 + 2", answers: ["4"] },
-        { prompt: "3 + 3", answers: ["6"] }
+        { prompt: "cat", answers: ["cat"] },
+        { prompt: "dog", answers: ["dog"] }
       ]
     });
   });

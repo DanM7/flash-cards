@@ -239,7 +239,7 @@
       feedback = null;
       return;
     }
-    feedback = AnswerInterpreter.interpret(rawInput, card);
+    feedback = AnswerInterpreter.interpretTyped(rawInput, card);
 
     if (canAutoAdvance(feedback, rawInput)) {
       afterCorrectAdvance([rawInput.trim()], card.prompt);

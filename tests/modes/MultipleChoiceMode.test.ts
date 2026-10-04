@@ -38,8 +38,10 @@ const renderMode = (deck: SubjectDeck, timed = false, changes: Partial<MultipleC
   return { ...result, onBack, onHome };
 };
 
+const readyCard = () => screen.getByRole("button", { name: /Tap here to begin/ });
+
 const begin = async () => {
-  await fireEvent.pointerDown(document.body);
+  await fireEvent.click(readyCard());
 };
 
 const prompt = () => document.querySelector(".fc-play__question .flash__word")?.textContent ?? "";
@@ -64,33 +66,30 @@ describe("MultipleChoiceMode", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
   });
 
-  it("opens on a Ready card and only starts on a tap or Enter/Space outside the buttons", async () => {
+  it("opens on a Ready card and only starts when that card is tapped", async () => {
     renderMode(mathDeck(2));
     expect(screen.getByText("Ready?")).toBeInTheDocument();
-    expect(screen.getByText("Tap anywhere to begin")).toBeInTheDocument();
+    expect(screen.getByText("Tap here to begin")).toBeInTheDocument();
     expect(screen.queryByText("Choose the answer")).toBeNull();
 
-    const back = screen.getByRole("button", { name: "← Back" });
-    await fireEvent.pointerDown(back);
-    await fireEvent.keyDown(back, { key: "Enter" });
-    await fireEvent.keyDown(document.body, { key: "a" });
-    expect(screen.getByText("Ready?")).toBeInTheDocument();
-
+    // Taps and keys anywhere else leave it waiting.
+    await fireEvent.pointerDown(document.body);
+    await fireEvent.click(document.body);
+    await fireEvent.click(screen.getByRole("heading", { name: "Math facts" }));
+    await fireEvent.keyDown(document.body, { key: "Enter" });
     await fireEvent.keyDown(document.body, { key: " " });
+    expect(screen.getByText("Ready?")).toBeInTheDocument();
+    expect(screen.queryByText("Choose the answer")).toBeNull();
+
+    await begin();
     expect(screen.queryByText("Ready?")).toBeNull();
     expect(screen.getByText("Choose the answer")).toBeInTheDocument();
     expect(screen.getByText("Solve this")).toBeInTheDocument();
-
-    // Once playing, taps and keys no longer do anything special.
-    await fireEvent.pointerDown(document.body);
-    await fireEvent.keyDown(document.body, { key: "Enter" });
-    expect(screen.getByText("Choose the answer")).toBeInTheDocument();
   });
 
-  it("starts with Enter too", async () => {
+  it("focuses the Ready card so Enter or Space can start the game", () => {
     renderMode(mathDeck(1));
-    await fireEvent.keyDown(document.body, { key: "Enter" });
-    expect(screen.getByText("Choose the answer")).toBeInTheDocument();
+    expect(document.activeElement).toBe(readyCard());
   });
 
   it("scores first-try answers and finishes the deck", async () => {

@@ -1,6 +1,6 @@
 # flash-cards
 
-A flash-card practice app for kids, covering 2nd through 6th grade, plus a Computer Science track for grown-up study. Pick a grade, choose a subject and unit, and work through shuffled cards in short rounds — multiple choice for most decks, typing or voice for the 4th grade decks.
+A flash-card practice app for kids, covering 2nd through 6th grade, plus a Computer Science track for grown-up study. Pick a grade, choose a subject and unit, and work through shuffled cards in short rounds — multiple choice for most decks (every math deck), typing or voice for the 4th grade sight words.
 
 Project summary: [dan-maguire.com/projects/flash-cards](https://dan-maguire.com/projects/flash-cards)
 
@@ -24,11 +24,12 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | Grade | Subject | Decks |
 |---|---|---|
 | 2nd | Math | Addition, Subtraction (1- and 2-digit, never over 100 or below zero) |
-| 3rd | Math | Addition, Subtraction, Multiplication, Division, All Four Operations (up to 3-digit numbers, including negatives; times tables through 12) |
+| 2nd | Reading | Vocabulary: the 100 most common words (hear a word, find it among look-alikes) |
+| 3rd | Math | Addition, Subtraction, Multiplication, Division, All Four Operations (sums and differences within 100; times tables through 10) |
 | 3rd | Reading | Vocabulary (hear a word, find it among look-alikes) |
-| 4th | Reading | Speech & Typing (sight words, typing or microphone), Vocabulary (hear a word, find it among look-alikes) |
-| 4th | Math | Addition Facts (typing or microphone) |
+| 4th | Math | Addition, Subtraction, Multiplication, Division, All Four Operations (1- and 2-digit numbers: two 2-digit numbers added or subtracted, 2-digit × 1-digit, 2-digit ÷ 1-digit) |
 | 4th | Geography | States, State Capitals (see below) |
+| 4th | Reading | Speech & Typing (sight words, typing or microphone), Vocabulary (hear a word, find it among look-alikes) |
 | 5th | Math | Multi-Digit Multiplication, Long Division (with remainders), Fractions (unlike denominators, multiplying), Decimals, Order of Operations, Mixed Review |
 | 6th | Math | Unit 0: Calculation Practice (simplifying fractions, greatest common factor, least common multiple); Unit 1: Decimal Operations, one decimal and one whole number (88.88 ÷ 4), including money and measurement (Units 2–10 listed as coming soon) |
 | 6th | Science | Cells, Human Body, Genetics, Evolution, Environmental Science |
@@ -37,7 +38,7 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | Computer Science | Angular | Beginner, Intermediate, Expert, Mastery (read a definition, pick the term) |
 | Computer Science | Azure Fundamentals | All Terms: 40 cloud, Azure service, security, and governance terms (read a definition, pick the term) |
 
-Math decks are generated fresh every time, so no two games are the same. Wrong answers are built from common mistakes — a forgotten carry, a misplaced decimal, a remainder that's too big — rather than random numbers. Every math card has a hint.
+Math gets a step harder each grade, and every math deck is multiple choice. Math decks are generated fresh every time, so no two games are the same. Wrong answers are built from common mistakes — a forgotten carry, a misplaced decimal, a remainder that's too big — rather than random numbers. Every math card has a hint.
 
 ### 6th grade Geography
 
@@ -78,24 +79,26 @@ The same blank map, of the United States (Alaska and Hawaii inset, as on most U.
 ### Playing a multiple-choice deck
 
 - **Practice** goes at your own pace. **Timed** gives 20 seconds per question (`multipleChoice.secondsPerQuestion` in `flashcards.json`) and adds a Pause button.
-- Every game opens on a **Ready?** card — tap anywhere to begin, and the first question and timer start then.
+- Every game opens on a **Ready?** card — tap the card to begin (taps anywhere else don't count), and the first question and timer start then. The card has keyboard focus, so Enter or Space starts too.
 - Cards come in rounds of 10, with an encouragement screen between rounds. These numbers, the scoring below, and the messages are set in `flashcards.json` (see [Play settings and wording](#play-settings-and-wording)).
 - Wrong picks turn red and stay red; the right answer turns green and the next card comes up. There are no feedback messages, so the screen stays compact.
 - **Scoring:** 10 points for a first-try answer, minus 3 for each wrong pick and 1 for using the hint (never below 1). Skipped and timed-out cards score 0. The percentage is points earned out of points possible.
 - While paused, the question is covered by a PAUSED card of the same size and the answers show only A–D, so nothing can be peeked at.
 - The play screen always fits the window without scrolling, and the answers stay in two columns on phones.
 
-### 3rd and 4th grade Vocabulary
+### 2nd, 3rd, and 4th grade Vocabulary
 
 The word is never shown. It's read aloud with the browser's built-in speech (the Web Speech API, no extra library) as each card appears, and the player taps it among look-alike words (`quiet`, `quite`, `quit`, `quilt`). Wrong answers are written into each card and never sound the same as the word, so there's no guessing between homophones. The hint is a fill-in-the-blank sentence. **Play again** reads the word once more. While the word is being read, a few soft bars pulse like a sound wave, and they stay still otherwise (or with reduced motion turned on). The voice speaks the card's language (see [Flashcard data](#flashcard-data)) at the speed set in `multipleChoice.speech.rate`. Voices vary by device, and if a browser can't speak at all, the word is shown instead.
 
 ### 6th grade French Alphabet
 
-Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The deck covers A–Z (the `french-letters` set) plus é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç (`french-accented-letters`), and wrong answers are other letters from either set. If a letter sounds wrong on some device, change its question (the key in the set) to spell the name differently.
+Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The deck covers A–Z (the `letters` set) plus é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç (`accented-letters`), and wrong answers are other letters from either set. If a letter sounds wrong on some device, change its question (the key in the set) to spell the name differently.
 
 ### 4th grade typing and voice
 
-Speech & Typing (the sight words) and Addition Facts accept a typed answer or a spoken one through the browser's speech recognition. With the microphone on it keeps listening between cards, and math answers can be said as digits or words ("7" or "seven").
+Speech & Typing (the sight words) accepts a typed answer or a spoken one through the browser's speech recognition. With the microphone on it keeps listening between cards.
+
+Typed answers must be spelled exactly; only capitals and surrounding spaces are ignored. Spoken answers are more forgiving, because the recognizer often writes a sound-alike of the word that was said (`for` or `4` for "four", `here` for "hear"), so those count, along with a near-miss on longer words. The sound-alikes are listed in `src/nlp/AnswerInterpreter.ts`.
 
 ### Navigation and links
 
@@ -108,7 +111,7 @@ The URL always reflects where you are, with blank values when a step isn't chose
 ```
 
 - `grade` and `subject` are set as you navigate the home screens.
-- `mode` (`practice` or `timed`; `typing` or `microphone` for the 4th grade decks) and `unit` are set when a deck starts, and cleared when you go back.
+- `mode` (`practice` or `timed`; `typing` or `microphone` for the 4th grade sight words) and `unit` are set when a deck starts, and cleared when you go back.
 - Opening a link like the one above starts that deck directly. Browser back and forward move between the deck and the home screen.
 - `unit` codes are readable names that never include the unit number, so units can be renumbered without breaking saved links. They're matched case-insensitively.
 
@@ -172,7 +175,7 @@ Written cards live in their subject's `cardSets`, keyed by set name, like `subje
 
 Three subjects also have their own compact formats in `subjectData`:
 
-- `reading.sightWords`: a list of words per grade, like `"4": ["a", "about", ...]`. Each word is its own question and answer.
+- `reading.sightWords`: a list of words per grade, like `"4": ["high", "every", ...]`. Each word is its own question and answer.
 - `french.colors`: each color's French and English word, a short French `phrase` using it, and that phrase in English with the color left out (`"a {color} ball"`). Each color makes three cards (English to French, French to English, and what the phrase means) worded by `templates`. Wrong answers are other colors plus the non-color words in `additionalIncorrectAnswers` (French word → English word, like `"crayon": "pencil"`); phrase cards swap other colors into the same phrase. `phraseHint` replaces a phrase card's usual hint, for feminine forms.
 - `geography`: the `question` asked on every map card, `nearbyCountries` (how many of the closest countries wrong answers come from), and `worldRegions`, each with the `continent` the map zooms out to (`north-america`, `south-america`, `europe`, `africa`, `asia`, or `oceania`) and its `countries`, each `{ "name": "France", "id": "250", "capital": "Paris" }` where `id` is the ISO 3166-1 numeric code the map data uses. Country capitals aren't used by any deck yet. For the U.S.: `stateQuestion` and `capitalQuestion` ("{state}" becomes the state's name), `nearbyStates`, and `unitedStates`, each `{ "name": "Texas", "capital": "Austin", "region": "southwest", "capitalCoordinates": [-97.743, 30.267] }` with the capital's [longitude, latitude] for the map dot. Regions are `northeast`, `southeast`, `midwest`, `southwest`, and `west`.
 
@@ -180,7 +183,7 @@ Three subjects also have their own compact formats in `subjectData`:
 
 Math problems are generated fresh every play, but the limits they follow live in `subjectData.math` in `flashcards.json`, so they can be changed without touching code:
 
-- `wholeNumberOperations` (2nd and 3rd grade, and 4th grade Addition Facts): deck size, and for each grade the allowed range for numbers and answers, the chance of negative numbers, and which operations it practices. Each operation sets how big its numbers are, and `largerFirst` keeps subtraction from going below zero.
+- `wholeNumberOperations` (2nd to 4th grade): deck size, and for each grade the allowed range for numbers and answers, the chance of negative numbers, and which operations it practices. Each operation sets how big its numbers are (`second` gives the second number its own size, as in 4th grade's 2-digit × 1-digit), and `largerFirst` keeps subtraction from going below zero. Division sets its `divisor` and `quotient`, so it always divides evenly, and `dividendMax` can cap the number being divided.
 - `grade5`: deck size, how often each topic comes up in Mixed Review, multiplication factor sizes, division divisors and remainders, fraction denominators, decimal places and sizes, and the order-of-operations expressions with a range for each letter.
 - `decimalOperations` (6th grade): deck size, operations, answer range, units, and how often numbers have two places or divide evenly. `decimalOperands` is `"one"` (one decimal and one whole number, with `decimalFirstChance` picking which comes first) or `"both"` (both decimals).
 - `calculationPractice` (6th grade Unit 0): deck size, how often each topic comes up (`simplify`, `gcf`, `lcm`), and number ranges: the denominator of the simplified fraction and the common factor it's scaled up by, the greatest common factor and the multipliers that make the two numbers, and the two numbers for a least common multiple.
@@ -199,7 +202,7 @@ The home screen is built from `appSettings.home` and the `catalog` group of `fla
 
 Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, a `blurb` for the subject tile (it falls back to the summary), and `"available": false` to show it as coming soon. It lists its decks one of two ways:
 
-- `decks`: plain decks. On a grade without a subject step (4th grade), each is badged with its subject name, since one list mixes subjects.
+- `decks`: plain decks. On a grade without a subject step (every grade has one right now), each is badged with its subject name, since one list mixes subjects.
 - `units`: numbered units, each with a `title` and a `deck`. Units are numbered "Unit 1", "Unit 2", ... in order; one with its own `label` (like "Final") keeps it and isn't counted. A unit that's just a string, like `"Fraction Operations"`, is listed as coming soon.
 
 ```json
@@ -213,7 +216,7 @@ Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, 
 
 - `unit` is the `?unit=` code: lowercase, hyphenated, and unique within its grade and subject.
 - `description` can include `{count}`, which becomes the number of cards the deck draws from.
-- `interaction` is `"multiple-choice"` (the default) or `"voice-or-type"`.
+- `interaction` is `"multiple-choice"` (the default) or `"voice-or-type"`. Math decks are always multiple choice.
 - `build` says where the cards come from:
   - `{ "type": "cards", "sets": ["cells"] }`: written cards from one or more of the deck subject's card sets (a science deck's `cells` is `subjectData.science.cardSets.cells`). `deckType` picks the play screen's labels (it defaults to the subject, so vocabulary decks set `"vocabulary"`), and math decks need an `operation` such as `"addition"`. `"listen": true` reads each question aloud instead of showing it.
   - `{ "type": "sightWords" }`: the grade's sight words from `reading.sightWords`.

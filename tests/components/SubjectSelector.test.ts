@@ -6,14 +6,15 @@ import SelectSubject from "../../src/routes/select-subject.svelte";
 import { flashcardData } from "../helpers/flashcards";
 
 const options = getDecksForGrade(flashcardData, 4);
+const optionFor = (id: string) => options.find((option) => option.id === id);
 
 describe("SubjectSelector", () => {
   it("lists deck options and reports the one picked", async () => {
     const { component } = render(SubjectSelector, { options });
     const onSelect = vi.fn();
     component.$on("select", onSelect);
-    await fireEvent.click(screen.getByRole("button", { name: "Addition Facts" }));
-    expect(onSelect.mock.calls[0][0].detail).toBe(options[2]);
+    await fireEvent.click(screen.getByRole("button", { name: "Multiplication" }));
+    expect(onSelect.mock.calls[0][0].detail).toBe(optionFor("4-math-multiplication"));
   });
 
   it("renders an empty list by default", () => {
@@ -31,7 +32,7 @@ describe("select-subject route", () => {
     component.$on("back", onBack);
     await fireEvent.click(screen.getByRole("button", { name: "Speech & Typing" }));
     await fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(onSelect.mock.calls[0][0].detail).toBe(options[0]);
+    expect(onSelect.mock.calls[0][0].detail).toBe(optionFor("4-reading-sight-words"));
     expect(onBack).toHaveBeenCalled();
   });
 

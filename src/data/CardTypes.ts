@@ -131,7 +131,7 @@ export interface DeckEntry {
   title: string;
   /** "{count}" becomes the number of flashcards the deck draws from. */
   description: string;
-  /** Defaults to multiple choice. */
+  /** Defaults to multiple choice. Math decks are always multiple choice. */
   interaction?: InteractionMode;
   build: DeckBuild;
 }

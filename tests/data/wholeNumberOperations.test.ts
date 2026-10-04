@@ -32,14 +32,74 @@ const topics: [number, WholeNumberTopic][] = [
   [3, "sub"],
   [3, "mul"],
   [3, "div"],
-  [3, "mixed"]
+  [3, "mixed"],
+  [4, "add"],
+  [4, "sub"],
+  [4, "mul"],
+  [4, "div"],
+  [4, "mixed"]
 ];
+
+/** The two numbers in every card of a few seeded decks. */
+const operandsOf = (grade: number, topic: WholeNumberTopic): number[][] => {
+  const all: number[][] = [];
+  for (let seed = 1; seed <= 20; seed += 1) {
+    seedRandom(seed);
+    all.push(...createWholeNumberDeck(topic, rules, info(grade)).cards.map((card) => operands(card.prompt)));
+  }
+  return all;
+};
+
+const between = (value: number, min: number, max: number) => value >= min && value <= max;
 
 describe("createWholeNumberDeck", () => {
   it("reads the deck size and number ranges from flashcards.json", () => {
     expect(rules.deckSize).toBe(20);
     expect(rules.grades[2].range).toEqual({ min: 0, max: 100 });
-    expect(rules.grades[3].range).toEqual({ min: -1000, max: 1000 });
+    expect(rules.grades[3].range).toEqual({ min: 0, max: 100 });
+    expect(rules.grades[4].range).toEqual({ min: 0, max: 1000 });
+    expect([2, 3, 4].map((grade) => rules.grades[grade].negativeChance)).toEqual([0, 0, 0]);
+  });
+
+  it("3rd grade: sums and differences within 100, and times tables through 10", () => {
+    for (const [a, b] of [...operandsOf(3, "add"), ...operandsOf(3, "sub")]) {
+      expect(between(a, 1, 99) && between(b, 1, 99), `${a}, ${b}`).toBe(true);
+    }
+    expect(operandsOf(3, "sub").every(([a, b]) => a >= b)).toBe(true);
+    expect(operandsOf(3, "mul").every(([a, b]) => between(a, 2, 10) && between(b, 2, 10))).toBe(true);
+    expect(operandsOf(3, "div").every(([a, b]) => between(b, 2, 10) && between(a / b, 1, 10))).toBe(true);
+  });
+
+  it("4th grade: 2-digit sums and differences, 2-digit by 1-digit multiplication, and 2-digit by 1-digit division", () => {
+    for (const [a, b] of [...operandsOf(4, "add"), ...operandsOf(4, "sub")]) {
+      expect(between(a, 10, 99) && between(b, 10, 99), `${a}, ${b}`).toBe(true);
+    }
+    expect(operandsOf(4, "sub").every(([a, b]) => a >= b)).toBe(true);
+    const products = operandsOf(4, "mul");
+    expect(products.every(([a, b]) => between(a, 2, 99) && between(b, 2, 9))).toBe(true);
+    expect(products.some(([a]) => a >= 10)).toBe(true);
+    const quotients = operandsOf(4, "div");
+    expect(quotients.every(([a, b]) => between(a, 4, 99) && between(b, 2, 9) && Number.isInteger(a / b))).toBe(true);
+    expect(quotients.some(([a, b]) => a / b >= 10)).toBe(true);
+  });
+
+  it("handles negative numbers when a grade's rules allow them", () => {
+    const signed = copyMathRules().wholeNumberOperations;
+    signed.grades[3].range = { min: -1000, max: 1000 };
+    signed.grades[3].negativeChance = 0.3;
+    const prompts: string[] = [];
+    for (let seed = 1; seed <= 20; seed += 1) {
+      seedRandom(seed);
+      for (const card of createWholeNumberDeck("mixed", signed, info(3)).cards) {
+        prompts.push(card.prompt);
+        const correct = evaluate(card.prompt);
+        expect(card.answers[0]).toBe(correct < 0 ? `−${-correct}` : String(correct));
+        expect(new Set(card.choices).size).toBe(4);
+        expect(card.choices).toContain(card.answers[0]);
+      }
+    }
+    expect(prompts.some((prompt) => prompt.includes("(−"))).toBe(true);
+    expect(prompts.some((prompt) => prompt.startsWith("−"))).toBe(true);
   });
 
   it.each(topics)("grade %i %s: every card is solvable with four in-range choices", (grade, topic) => {

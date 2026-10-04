@@ -21,7 +21,21 @@ export class AnswerInterpreter {
     for: ["four"],
     one: ["won"],
     no: ["know"],
-    by: ["buy", "bye"]
+    by: ["buy", "bye"],
+    add: ["ad"],
+    high: ["hi"],
+    four: ["for", "4"],
+    hear: ["here"],
+    sea: ["see", "c"],
+    night: ["knight"],
+    eyes: ["ice", "i s"],
+    "it s": ["its"],
+    feet: ["feat"],
+    side: ["sighed"],
+    seem: ["seam"],
+    light: ["lite"],
+    might: ["mite"],
+    miss: ["ms"]
   };
   private static readonly ambiguousMap: Record<string, string[]> = {
     an: ["and"],
@@ -41,6 +55,7 @@ export class AnswerInterpreter {
       if (confusions?.length) {
         answers.push(...confusions);
       }
+      // Spoken numbers ("seven" for 7): works, but unused while every math deck is multiple choice.
       const spelled = Normalization.spellNumber(normalized);
       if (spelled) {
         answers.push(spelled);
@@ -69,6 +84,24 @@ export class AnswerInterpreter {
     return Normalization.normalizeAnswers(ambiguous);
   }
 
+  private static typedForm(text: string): string {
+    return text.trim().toLowerCase().replace(/[\u2018\u2019]/g, "'");
+  }
+
+  /**
+   * Typed answers must be spelled exactly (ignoring capitals and surrounding spaces): no sound-alikes,
+   * near-misses or partial matches. Typing is checked on every keystroke, so a near-miss would also
+   * accept the word a letter early.
+   */
+  static interpretTyped(input: string, card: Card): AnswerInterpretation {
+    const normalizedInput = this.typedForm(input);
+    const normalizedAnswers = card.answers.map((answer) => this.typedForm(answer));
+    const isCorrect = normalizedAnswers.includes(normalizedInput);
+
+    return { isCorrect, matchType: isCorrect ? "exact" : "none", normalizedInput, normalizedAnswers };
+  }
+
+  /** Spoken answers: forgiving, since the recognizer often writes a sound-alike ("for" when "four" was said). */
   static interpret(input: string, card: Card): AnswerInterpretation {
     const normalizedInput = Normalization.normalizeText(input);
     const normalizedAnswers = Normalization.normalizeAnswers(this.expandedAnswers(card));

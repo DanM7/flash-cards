@@ -40,7 +40,7 @@
   let timeLeftMs = TIME_LIMIT_MS;
   let timedOut = false;
   let paused = false;
-  /** Every game opens on a "Ready?" card; the first question and timer wait for a tap. */
+  /** Every game opens on a "Ready?" card; the first question and timer wait for a tap on it. */
   let ready = true;
   let timerId: number | null = null;
 
@@ -118,22 +118,8 @@
     startTimer();
   };
 
-  /*
-   * Pointerdown rather than click: the click that opened the game can still be
-   * bubbling to window when this screen mounts, and would skip straight past Ready.
-   */
-  const beginOnPointer = (event: PointerEvent) => {
-    if (ready && !(event.target as Element).closest("a, button")) {
-      begin();
-    }
-  };
-
-  const beginOnKey = (event: KeyboardEvent) => {
-    if (ready && (event.key === "Enter" || event.key === " ") && !(event.target as Element).closest("a, button")) {
-      event.preventDefault();
-      begin();
-    }
-  };
+  /** Focuses the Ready card so Enter or Space starts the game. */
+  const focusOnMount = (node: HTMLElement) => node.focus({ preventScroll: true });
 
   $: timerPercent = (timeLeftMs / TIME_LIMIT_MS) * 100;
   $: timerSeconds = Math.ceil(timeLeftMs / 1000);
@@ -300,8 +286,6 @@
   };
 </script>
 
-<svelte:window on:pointerdown={beginOnPointer} on:keydown={beginOnKey} />
-
 <section class="fc-play">
   <header class="fc-play__header">
     <div class="fc-play__nav">
@@ -350,7 +334,9 @@
 
         <div class="fc-play__card">
           {#if ready}
-            <FlashCard prompt="Ready?" cue="Tap anywhere to begin" />
+            <button type="button" class="fc-play__ready" use:focusOnMount on:click={begin}>
+              <FlashCard prompt="Ready?" cue="Tap here to begin" />
+            </button>
           {:else}
             <!-- Stays laid out (just hidden) while paused so the PAUSED card matches its size. -->
             <div class="fc-play__question" class:fc-play__question--hidden={paused} aria-hidden={paused}>
@@ -500,6 +486,24 @@
     min-height: 0;
     display: flex;
     flex-direction: column;
+  }
+
+  .fc-play__ready {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: none;
+    border-radius: var(--fc-radius-lg);
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+  }
+
+  .fc-play__ready:focus-visible {
+    outline: 3px solid var(--fc-primary);
+    outline-offset: 3px;
   }
 
   .fc-play__question {

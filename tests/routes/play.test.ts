@@ -112,20 +112,14 @@ describe("play route (typing and voice)", () => {
       expect(onHome).toHaveBeenCalledOnce();
     });
 
-    it("asks again when an answer sounds like another word", async () => {
-      renderPlay(words("an"));
-      expect(screen.getAllByRole("button", { name: "Mark correct" })).toHaveLength(1);
-      await type("and");
-      expect(feedback()).toHaveClass("fc-feedback--maybe");
-      expect(feedback()).toHaveTextContent("Almost. We heard “and”. Try again, or mark correct if that was right.");
-
-      await fireEvent.click(button("Try again"));
-      expect(feedback()).not.toBeVisible();
+    it("needs the exact spelling, so sound-alikes and near-misses are wrong", async () => {
+      renderPlay(words("hear"));
+      for (const attempt of ["here", "hea", "and"]) {
+        await type(attempt);
+        expect(feedback()).toHaveClass("fc-feedback--bad");
+      }
       expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
-
-      await type("and");
-      const [, ambiguousMarkCorrect] = screen.getAllByRole("button", { name: "Mark correct" });
-      await fireEvent.click(ambiguousMarkCorrect);
+      await type("Hear");
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
     });
 
@@ -237,6 +231,36 @@ describe("play route (typing and voice)", () => {
       await vi.waitFor(() => expect(feedback()).toHaveClass("fc-feedback--bad"));
       expect(screen.getByText("Last heard: dog")).toBeInTheDocument();
       expect(historyRows()).toEqual([["cat", "dog", "incorrect"]]);
+    });
+
+    it("accepts a sound-alike of the word", async () => {
+      renderPlay(words("hear"));
+      const recognizer = await listen();
+      recognizer.emitResult([{ transcripts: ["here"] }]);
+      recognizer.emitEnd();
+      await vi.waitFor(() => expect(screen.getByText("You finished the deck!")).toBeInTheDocument());
+    });
+
+    it("asks again when an answer sounds like another word", async () => {
+      renderPlay(words("an"));
+      expect(screen.getAllByRole("button", { name: "Mark correct" })).toHaveLength(1);
+      const recognizer = await listen();
+      recognizer.emitResult([{ transcripts: ["and"] }]);
+      recognizer.emitEnd();
+      await vi.waitFor(() => expect(feedback()).toHaveClass("fc-feedback--maybe"));
+      expect(feedback()).toHaveTextContent("Almost. We heard “and”. Try again, or mark correct if that was right.");
+
+      await fireEvent.click(button("Try again"));
+      expect(feedback()).not.toBeVisible();
+      expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+
+      const again = await listen();
+      again.emitResult([{ transcripts: ["and"] }]);
+      again.emitEnd();
+      await vi.waitFor(() => expect(screen.getAllByRole("button", { name: "Mark correct" })).toHaveLength(2));
+      const [, ambiguousMarkCorrect] = screen.getAllByRole("button", { name: "Mark correct" });
+      await fireEvent.click(ambiguousMarkCorrect);
+      expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
     });
 
     it("keeps the first guess when none of the heard words are right", async () => {

@@ -5,7 +5,11 @@ const ONES = [
 const TENS = ["", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety"];
 
 export class Normalization {
-  /** "7" → "seven", "42" → "forty two", up to "one hundred"; null for anything else. */
+  /**
+   * "7" → "seven", "42" → "forty two", up to "one hundred"; null for anything else.
+   * Lets spoken math answers match ("seven" for 7). It works, but no deck uses it right now since math
+   * went multiple-choice only; kept in case spoken math comes back.
+   */
   static spellNumber(input: string): string | null {
     if (!/^\d{1,3}$/.test(input)) {
       return null;

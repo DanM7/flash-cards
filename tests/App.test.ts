@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.svelte";
 import type { MathDeck } from "../src/data/CardTypes";
 import { createWholeNumberDeck } from "../src/data/subjects/math/wholeNumberOperations";
-import { stubFlashcardsFetch } from "./helpers/flashcards";
+import { copyFlashcardData, stubFlashcardsFetch } from "./helpers/flashcards";
 
 vi.mock("../src/data/subjects/math/wholeNumberOperations", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../src/data/subjects/math/wholeNumberOperations")>();
@@ -26,7 +26,7 @@ const renderApp = async (search = "") => {
 const holdFlashcardsFetch = () => {
   let finish = () => {};
   const fetchMock = stubFlashcardsFetch();
-  const answer = fetchMock.getMockImplementation() as () => Promise<unknown>;
+  const answer = fetchMock.getMockImplementation() as () => ReturnType<typeof fetchMock>;
   fetchMock.mockImplementationOnce(() => new Promise((resolve) => (finish = () => resolve(answer()))));
   return () => finish();
 };
@@ -66,16 +66,16 @@ describe("App", () => {
   it("opens a typing deck, records it in the URL, and goes back home", async () => {
     await renderApp();
     await click(/^4th Grade/);
+    await click(/Reading/);
     await startFromTopic("Speech & Typing", /Typing/);
     expect(await screen.findByRole("heading", { name: "Speech & Typing" })).toBeInTheDocument();
     expect(screen.getByText("Typing")).toBeInTheDocument();
     expect(shell()).toHaveClass("fc-shell--fit");
-    // 4th grade has no subject step, so the subject stays blank.
-    expect(params()).toEqual({ grade: "4", subject: "", mode: "typing", unit: "sight-words" });
+    expect(params()).toEqual({ grade: "4", subject: "reading", mode: "typing", unit: "sight-words" });
 
     await click("← Back");
-    expect(screen.getByRole("heading", { name: "4th Grade" })).toBeInTheDocument();
-    expect(params()).toEqual({ grade: "4", subject: "", mode: "", unit: "" });
+    expect(screen.getByRole("heading", { name: "4th Grade · Reading" })).toBeInTheDocument();
+    expect(params()).toEqual({ grade: "4", subject: "reading", mode: "", unit: "" });
   });
 
   it("has a house button to the grade list everywhere but the grade list itself", async () => {
@@ -99,11 +99,21 @@ describe("App", () => {
     expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
   });
 
-  it("opens a deck with the microphone", async () => {
+  it("leaves the subject out of the URL for a grade without a subject step", async () => {
+    const data = copyFlashcardData();
+    delete data.catalog.grades[2].pickSubject;
+    stubFlashcardsFetch(data);
     await renderApp("?grade=4");
-    await startFromTopic("Addition Facts", /Microphone/);
+    await startFromTopic("Speech & Typing", /Typing/);
+    expect(await screen.findByRole("heading", { name: "Speech & Typing" })).toBeInTheDocument();
+    expect(params()).toEqual({ grade: "4", subject: "", mode: "typing", unit: "sight-words" });
+  });
+
+  it("opens a deck with the microphone", async () => {
+    await renderApp("?grade=4&subject=reading");
+    await startFromTopic("Speech & Typing", /Microphone/);
     expect(await screen.findByText("Listening")).toBeInTheDocument();
-    expect(params()).toMatchObject({ mode: "microphone", unit: "addition-facts" });
+    expect(params()).toMatchObject({ mode: "microphone", unit: "sight-words" });
   });
 
   it("opens multiple-choice decks in practice or timed mode", async () => {

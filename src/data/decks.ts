@@ -100,7 +100,7 @@ const optionsOf = (data: FlashcardData): DeckOption[] =>
         title,
         badge,
         description: deck.description,
-        interaction: deck.interaction ?? "multiple-choice",
+        interaction: entry.subject === "math" ? "multiple-choice" : (deck.interaction ?? "multiple-choice"),
         build: deck.build
       });
       return [

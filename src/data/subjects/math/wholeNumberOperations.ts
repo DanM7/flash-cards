@@ -6,8 +6,10 @@ type Op = "add" | "sub" | "mul" | "div";
 export type WholeNumberTopic = Op | "mixed";
 
 interface OperandRule {
-  /** Both numbers are drawn from this. */
+  /** Both numbers are drawn from this, unless `second` is set. */
   operand: NumberRule;
+  /** The second number is drawn from this instead (e.g. a 2-digit number times a 1-digit one). */
+  second?: NumberRule;
   /** Swap so the larger number comes first (subtraction that never goes below zero). */
   largerFirst?: boolean;
 }
@@ -16,6 +18,8 @@ interface DivisionRule {
   divisor: NumberRule;
   /** The dividend is divisor × quotient, so division always comes out even. */
   quotient: NumberRule;
+  /** Largest dividend allowed, when it should stay smaller than the grade's range (e.g. 2-digit ÷ 1-digit). */
+  dividendMax?: number;
 }
 
 export interface WholeNumberGradeRules {
@@ -90,17 +94,27 @@ const drawProblem = (op: Op, rules: WholeNumberGradeRules): Problem => {
   }
   const rule = rules.operations[op] as OperandRule;
   let a = signedDraw(rule.operand, rules);
-  let b = signedDraw(rule.operand, rules);
+  let b = signedDraw(rule.second ?? rule.operand, rules);
   if (rule.largerFirst && a < b) {
     [a, b] = [b, a];
   }
   return { a, b, op };
 };
 
+const fits = (problem: Problem, rules: WholeNumberGradeRules): boolean => {
+  const dividendMax = problem.op === "div" ? (rules.operations.div as DivisionRule).dividendMax : undefined;
+  return (
+    inRange(problem.a, rules) &&
+    inRange(problem.b, rules) &&
+    inRange(compute(problem.a, problem.b, problem.op), rules) &&
+    (dividendMax == null || Math.abs(problem.a) <= dividendMax)
+  );
+};
+
 const generateProblem = (op: Op, rules: WholeNumberGradeRules): Problem => {
   for (;;) {
     const problem = drawProblem(op, rules);
-    if (inRange(problem.a, rules) && inRange(problem.b, rules) && inRange(compute(problem.a, problem.b, op), rules)) {
+    if (fits(problem, rules)) {
       return problem;
     }
   }
