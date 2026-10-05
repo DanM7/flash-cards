@@ -18,7 +18,7 @@ export default defineConfig({
       all: true,
       include: ["src/**/*.{ts,svelte}"],
       // Type declarations only; there is no runtime code to cover.
-      exclude: ["src/data/CardTypes.ts"],
+      exclude: ["src/data/CardTypes.ts", "src/progress/ProgressModel.ts"],
       reporter: ["text", "html"],
       thresholds: {
         statements: 100,

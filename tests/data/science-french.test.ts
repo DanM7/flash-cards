@@ -40,23 +40,28 @@ describe("6th grade science decks", () => {
   });
 });
 
-describe("6th grade French alphabet deck", () => {
-  it("reads every letter aloud in French, accents included", async () => {
-    const alphabet = await deck("6-french-alphabet");
-    expect(alphabet).toMatchObject({ subject: "french", grade: 6, unitLabel: "Unit 1: Alphabet", listen: true });
-    const answers = alphabet.cards.map((card) => card.answers[0]);
-    expect(answers.slice(0, 26).join("")).toBe("abcdefghijklmnopqrstuvwxyz");
-    expect(answers.slice(26)).toEqual(["é", "è", "ê", "ë", "à", "â", "î", "ï", "ô", "ù", "û", "ç"]);
+describe("6th grade French alphabet decks", () => {
+  const accented = ["é", "è", "ê", "ë", "à", "â", "î", "ï", "ô", "ù", "û", "ç"];
+
+  it.each([
+    ["6-french-letters", "Unit 1: Alphabet · Standard Letters", "abcdefghijklmnopqrstuvwxyz".split("")],
+    ["6-french-accented-letters", "Unit 1: Alphabet · Accented Letters", accented]
+  ])("%s reads each letter aloud in French, with wrong answers from the same group", async (id, unitLabel, letters) => {
+    const alphabet = await deck(id);
+    expect(alphabet).toMatchObject({ subject: "french", grade: 6, unitLabel, listen: true });
+    expect(alphabet.cards.map((card) => card.answers[0])).toEqual(letters);
     for (const card of alphabet.cards) {
       expect(card.lang).toBe("fr-FR");
       expect(card.choices).toHaveLength(4);
       expect(new Set(card.choices).size).toBe(4);
       expect(card.choices).toContain(card.answers[0]);
+      expect(card.choices?.every((choice) => letters.includes(choice)), card.prompt).toBe(true);
     }
   });
 
   it("names accented letters the French way, so each one sounds different", async () => {
-    const byAnswer = new Map((await deck("6-french-alphabet")).cards.map((card) => [card.answers[0], card]));
+    const cards = [...(await deck("6-french-letters")).cards, ...(await deck("6-french-accented-letters")).cards];
+    const byAnswer = new Map(cards.map((card) => [card.answers[0], card]));
     expect(byAnswer.get("é")?.prompt).toBe("e accent aigu");
     expect(byAnswer.get("ç")?.prompt).toBe("c cédille");
     expect(byAnswer.get("y")?.prompt).toBe("i grec");

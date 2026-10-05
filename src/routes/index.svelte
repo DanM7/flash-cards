@@ -3,15 +3,21 @@
   import type { FlashcardData, GradeKey } from "../data/CardTypes";
   import {
     colorFor,
+    deckReview,
     deckDescription,
     getDecksForGrade,
     subjectLabelFor,
     subjectStepFor,
     unitsFor,
-    type DeckOption
+    type DeckOption,
+    type DeckReview
   } from "../data/decks";
   import { readNav, writeNav } from "../nav";
+  import DeckSummary from "../components/DeckSummary.svelte";
+  import ReviewModal from "../components/ReviewModal.svelte";
   import HomeButton from "../components/HomeButton.svelte";
+  import ProfileButton from "../components/ProfileButton.svelte";
+  import ProfileModal from "../components/ProfileModal.svelte";
 
   export let data: FlashcardData;
 
@@ -26,6 +32,26 @@
 
   let selectedGrade: GradeKey | null = null;
   let selectedArea: string | null = null;
+  let scores: ProfileModal;
+  let reviewModal: ReviewModal;
+
+  const reviewLinks: Record<DeckReview["kind"], string> = {
+    definitions: "View definitions",
+    capitals: "View capitals",
+    words: "View words"
+  };
+
+  /** Coming-soon units pass null. */
+  const reviewLabel = (option: DeckOption | null) => {
+    const review = option && deckReview(option, data);
+    return review ? reviewLinks[review.kind] : "";
+  };
+
+  /** Only decks with a review link call this, so there's always a deck and something to review. */
+  const showReview = (unitOption: DeckOption | null) => {
+    const option = unitOption as DeckOption;
+    reviewModal.show(`${subjectLabelFor(data, option.subject)} · ${option.title}`, deckReview(option, data) as DeckReview);
+  };
 
   $: subjects =
     selectedGrade == null
@@ -112,6 +138,11 @@
 </script>
 
 <section class="home fc-surface">
+  <div class="home__profile-btn">
+    <ProfileButton on:click={() => scores.show()} />
+  </div>
+  <ProfileModal bind:this={scores} />
+  <ReviewModal bind:this={reviewModal} />
   <header class="home__brand">
     <span class="home__logo" aria-hidden="true">✦</span>
     <h1 class="home__title">Flash Cards</h1>
@@ -182,7 +213,7 @@
       </div>
     {:else if units}
       <div class="home-topics" role="list">
-        {#each units as unit (unit.label)}
+        {#each units as unit (`${unit.label}: ${unit.title}`)}
           {@const option = unit.option}
           <article
             class="home-topic home-topic--{colorFor(data, String(selectedArea))}"
@@ -195,11 +226,13 @@
               {/if}
               <h2 class="home-topic__title">{unit.label}: {unit.title}</h2>
             </div>
-            <p class="home-topic__desc">
-              {option
+            <DeckSummary
+              text={option
                 ? deckDescription(option, data)
                 : "Practice for this unit will be added once the details are ready."}
-            </p>
+              reviewLabel={reviewLabel(option)}
+              on:review={() => showReview(option)}
+            />
             <div class="home-topic__actions">
               <button
                 type="button"
@@ -236,7 +269,11 @@
             {/if}
             <h2 class="home-topic__title">{option.title}</h2>
           </div>
-          <p class="home-topic__desc">{deckDescription(option, data)}</p>
+          <DeckSummary
+            text={deckDescription(option, data)}
+            reviewLabel={reviewLabel(option)}
+            on:review={() => showReview(option)}
+          />
           <div class="home-topic__actions">
             {#if option.interaction === "multiple-choice"}
               <button
@@ -297,6 +334,12 @@
     position: absolute;
     top: clamp(0.75rem, 2.5vw, 1.25rem);
     left: clamp(0.75rem, 2.5vw, 1.25rem);
+  }
+
+  .home__profile-btn {
+    position: absolute;
+    top: clamp(0.75rem, 2.5vw, 1.25rem);
+    right: clamp(0.75rem, 2.5vw, 1.25rem);
   }
 
   .home__logo {
@@ -670,13 +713,6 @@
     letter-spacing: -0.02em;
     color: var(--fc-text);
     line-height: 1.25;
-  }
-
-  .home-topic__desc {
-    margin: 0;
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: var(--fc-text-muted);
   }
 
   .home-topic__actions {

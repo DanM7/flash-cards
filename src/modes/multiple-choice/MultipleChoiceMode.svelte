@@ -6,6 +6,8 @@
   import ListenCard from "../../components/ListenCard.svelte";
   import type { Card, MultipleChoiceSettings, PlayText, SubjectDeck } from "../../data/CardTypes";
   import { canSpeak, stopSpeaking } from "../../nlp/SpeechSynthesizer";
+  import type { DeckProgress } from "../../progress/ProgressModel";
+  import { pointsForCard, scoreText } from "../../progress/Scoring";
 
   export let deck: SubjectDeck;
   export let timed = false;
@@ -13,7 +15,7 @@
   export let text: PlayText;
   /** Language of cards that don't set their own. */
   export let language: string;
-  const dispatch = createEventDispatcher<{ back: void; home: void }>();
+  const dispatch = createEventDispatcher<{ back: void; home: void; progress: DeckProgress }>();
 
   // Settings and wording are fixed for this screen, like the deck.
   const { encouragement, scoring, speech } = settings;
@@ -43,6 +45,8 @@
   /** Every game opens on a "Ready?" card; the first question and timer wait for a tap on it. */
   let ready = true;
   let timerId: number | null = null;
+  /** The short pause after a right answer; cancelled on leaving so a gone screen can't report a card. */
+  let advanceTimerId: number | undefined;
 
   const stopTimer = () => {
     if (timerId != null) {
@@ -66,7 +70,10 @@
     }, TIMER_TICK_MS);
   };
 
-  onDestroy(stopTimer);
+  onDestroy(() => {
+    stopTimer();
+    window.clearTimeout(advanceTimerId);
+  });
 
   const shuffle = <T>(items: T[]): T[] => {
     const next = [...items];
@@ -76,9 +83,6 @@
     }
     return next;
   };
-
-  const pointsForCard = (wrongs: number, hintUsed: boolean): number =>
-    Math.max(scoring.minimum, scoring.firstTry - wrongs * scoring.perWrongPick - (hintUsed ? scoring.hint : 0));
 
   const isCorrectChoice = (choice: string, card: Card): boolean => {
     const normalized = choice.trim().toLowerCase();
@@ -146,7 +150,7 @@
 
   $: percentageDisplay = potential === 0 ? "—" : `${Math.round((score / potential) * 100)}%`;
 
-  $: scoreDisplay = `Score: ${score} · Percentage: ${percentageDisplay}`;
+  $: scoreDisplay = scoreText(score, potential);
 
   $: progressDisplay =
     shuffledCards.length === 0
@@ -171,14 +175,12 @@
   /** Listening decks show the word instead when the browser can't read it aloud. */
   const listen = Boolean(deck.listen) && canSpeak();
 
-  const playSubtitleBase =
+  const playSubtitle =
     "unitLabel" in deck && deck.unitLabel
       ? deck.unitLabel
       : deck.subject === "math" && deck.grade
         ? `Grade ${deck.grade}`
         : "Multiple choice";
-
-  const playSubtitle = `${playSubtitleBase} · ${timed ? "Timed" : "Practice"}`;
 
   const goToNextCard = () => {
     if (currentCardIndex < shuffledCards.length - 1) {
@@ -189,6 +191,7 @@
       shuffledChoices = [];
     }
     resetCardState();
+    dispatch("progress", { score, possible: potential, cardsPlayed: currentCardIndex, cardsTotal: shuffledCards.length });
   };
 
   const triggerEncouragementBreak = (roundJustFinished: number) => {
@@ -216,7 +219,7 @@
       }
     };
     if (delayMs > 0) {
-      window.setTimeout(advance, delayMs);
+      advanceTimerId = window.setTimeout(advance, delayMs);
     } else {
       advance();
     }
@@ -236,7 +239,7 @@
       stopTimer();
       correctChoice = choice;
       locked = true;
-      afterCorrect(pointsForCard(wrongAttempts, usedHint));
+      afterCorrect(pointsForCard(scoring, wrongAttempts, usedHint));
       return;
     }
     wrongAttempts += 1;

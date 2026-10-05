@@ -33,12 +33,14 @@ Built with Svelte 4, TypeScript, and Vite. The geography maps use `d3-geo`, `top
 | 5th | Math | Multi-Digit Multiplication, Long Division (with remainders), Fractions (unlike denominators, multiplying), Decimals, Order of Operations, Mixed Review |
 | 6th | Math | Unit 0: Calculation Practice (simplifying fractions, greatest common factor, least common multiple); Unit 1: Decimal Operations, one decimal and one whole number (88.88 ÷ 4), including money and measurement (Units 2–10 listed as coming soon) |
 | 6th | Science | Cells, Human Body, Genetics, Evolution, Environmental Science |
-| 6th | French | Unit 1: Alphabet — letters read aloud in French, accents included; Unit 3: Colors — 12 color words, French ↔ English plus example phrases (Communication, Food, and School listed as coming soon) |
+| 6th | French | Unit 1: Alphabet — letters read aloud in French, in two decks: Standard Letters (A–Z) and Accented Letters; Unit 3: Colors — 12 color words, French ↔ English plus example phrases (Communication, Food, and School listed as coming soon) |
 | 6th | Geography | 11 regional country units plus a Final (see below) |
 | Computer Science | Angular | Beginner, Intermediate, Expert, Mastery (read a definition, pick the term) |
 | Computer Science | Azure Fundamentals | All Terms: 40 cloud, Azure service, security, and governance terms (read a definition, pick the term) |
 
 Math gets a step harder each grade, and every math deck is multiple choice. Math decks are generated fresh every time, so no two games are the same. Wrong answers are built from common mistakes — a forgotten carry, a misplaced decimal, a remainder that's too big — rather than random numbers. Every math card has a hint.
+
+Each deck's description is cut to two lines, with **More…** to read the rest (and **Less** to cut it again). The link only appears when the text doesn't fit, which depends on the screen width, so it's checked again when the window is resized. Decks built from term → definition sets (`"show": "value"`, the Angular and Azure decks today) also have a **View definitions** link that opens every term and its definition in a scrollable window, to review before playing. Vocabulary decks (`"deckType": "vocabulary"`, the 2nd–4th grade Reading Vocabulary decks) have **View words** instead, which opens the same window with just the deck's words. The 4th grade State Capitals deck has **View capitals**, listing each state (in the deck's regions) with its capital. The lists are sorted alphabetically, ignoring capitals; the decks still play in their own shuffled order. The × at its top left, Escape, or a click outside closes it.
 
 ### 6th grade Geography
 
@@ -82,9 +84,20 @@ The same blank map, of the United States (Alaska and Hawaii inset, as on most U.
 - Every game opens on a **Ready?** card — tap the card to begin (taps anywhere else don't count), and the first question and timer start then. The card has keyboard focus, so Enter or Space starts too.
 - Cards come in rounds of 10, with an encouragement screen between rounds. These numbers, the scoring below, and the messages are set in `flashcards.json` (see [Play settings and wording](#play-settings-and-wording)).
 - Wrong picks turn red and stay red; the right answer turns green and the next card comes up. There are no feedback messages, so the screen stays compact.
-- **Scoring:** 10 points for a first-try answer, minus 3 for each wrong pick and 1 for using the hint (never below 1). Skipped and timed-out cards score 0. The percentage is points earned out of points possible.
+- **Scoring:** 10 points for a first-try answer, minus 3 for each wrong pick and 1 for using the hint (never below 1). Skipped and timed-out cards score 0. The percentage is points earned out of points possible, shown after the score once a card has been answered ("Card 2 of 3 · Score: 10 (100%)").
 - While paused, the question is covered by a PAUSED card of the same size and the answers show only A–D, so nothing can be peeked at.
 - The play screen always fits the window without scrolling, and the answers stay in two columns on phones.
+
+### Scores
+
+Every deck's score is saved in the browser's local storage: the deck, the mode (Practice, Timed, Typing, or Microphone), the points and points possible, how many cards were played, and when. The person icon at the top right of the home screen opens **Your scores**, which lists:
+
+- **Recent scores:** the last 25 decks played, newest first.
+- **All-time high scores:** the best result for each deck in each mode, kept even after it drops off the recent list. A higher percentage wins; if two tie, the higher score does (the deck grew).
+
+A deck left before the end (Back, the house button, the browser's back button, opening another deck, or closing the tab) is saved to Recent, marked "Unfinished: stopped after 5 of 50 cards", with the points from the cards played so far. It never counts as a high score, since a partial score can't be compared fairly with a full one. Leaving before answering any card saves nothing. Scores stay in that one browser on that one device until a database replaces local storage. Only `src/progress/ProgressStore.ts` reads or writes storage, so that swap is one file. If storage is full or blocked (some private windows), the game still plays and the score just isn't kept.
+
+The scores window is the browser's built-in `<dialog>`, so Escape closes it, focus stays inside while it's open, and focus returns to the icon afterward. Clicking outside it or the × button also closes it.
 
 ### 2nd, 3rd, and 4th grade Vocabulary
 
@@ -92,13 +105,15 @@ The word is never shown. It's read aloud with the browser's built-in speech (the
 
 ### 6th grade French Alphabet
 
-Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The deck covers A–Z (the `letters` set) plus é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç (`accented-letters`), and wrong answers are other letters from either set. If a letter sounds wrong on some device, change its question (the key in the set) to spell the name differently.
+Each letter is read aloud by a French voice, and the player picks it from four look-alikes. Each card's question is the letter's French name (`bé`, `ji`, `i grec`, `double vé`), which is what gets read, and its answer is the letter. Accented letters are named the way French speakers say them (`e accent aigu` for é, `c cédille` for ç), so é, è, and ê sound different from each other and from plain e. The unit has two decks: Standard Letters covers A–Z (the `letters` set), and Accented Letters covers é, è, ê, ë, à, â, î, ï, ô, ù, û, and ç (`accented-letters`). Wrong answers come from the same deck, so an accented letter is picked from among other accented letters. If a letter sounds wrong on some device, change its question (the key in the set) to spell the name differently.
 
 ### 4th grade typing and voice
 
 Speech & Typing (the sight words) accepts a typed answer or a spoken one through the browser's speech recognition. With the microphone on it keeps listening between cards.
 
 Typed answers must be spelled exactly; only capitals and surrounding spaces are ignored. Spoken answers are more forgiving, because the recognizer often writes a sound-alike of the word that was said (`for` or `4` for "four", `here` for "hear"), so those count, along with a near-miss on longer words. The sound-alikes are listed in `src/nlp/AnswerInterpreter.ts`.
+
+Scoring is the same as multiple choice, using the same `multipleChoice.scoring` numbers: 10 points for a first-try answer, minus 3 for each wrong try (never below 1), and 0 for a skipped card. **Mark correct** gives the card's points as they stand. A wrong spoken answer counts as a wrong try, but an unclear one ("Almost. We heard 'and'…") doesn't. Typed answers are checked on every keystroke, so a typed wrong try is a different wrong word at least as long as the answer: `ca` on the way to `cat` doesn't count, and typing the same wrong word again doesn't count twice.
 
 ### Navigation and links
 
@@ -126,7 +141,8 @@ src/
   routes/index.svelte         home: grade → subject → unit
   routes/play.svelte          typing/voice play screen (4th grade)
   modes/multiple-choice/      multiple-choice play screen
-  components/                 FlashCard, ListenCard (read-aloud card), CountryMap, and shared UI
+  components/                 FlashCard, ListenCard (read-aloud card), CountryMap, the profile icon and scores window, deck descriptions and the window that lists a deck's definitions or words, and shared UI
+  progress/                   ProgressStore.ts saves scores to local storage, Scoring.ts has the points per card shared by both play screens, and ProgressModel.ts has their types
   services/                   flashcardService.ts loads flashcards.json at startup
   data/cardSets.ts            turns flashcards.json card sets into playable cards
   data/wrongAnswers.ts        spreads wrong answers evenly across a deck
@@ -167,7 +183,7 @@ Written cards live in their subject's `cardSets`, keyed by set name, like `subje
 }
 ```
 
-- The key is what's shown and the value is what gets picked. A set with `"show": "value"` turns that around for plain text cards: the Angular and Azure sets are written term → definition (`"Observable": "A stream of asynchronous values."`), but show the definition and ask for the term, so the choices are short terms. Cards written as objects always show their key.
+- The key is what's shown and the value is what gets picked. A set with `"show": "value"` turns that around for plain text cards: the Angular and Azure sets are written term → definition (`"Observable": "A stream of asynchronous values."`), but show the definition and ask for the term, so the choices are short terms. These sets are also what the home screen's **View definitions** lists. Cards written as objects always show their key.
 - An answer is a string, or an object with any of `answer` (left out, the question is the answer, as in vocabulary), `acceptedAnswers` (other answers that count), `incorrectAnswers`, and `hint`.
 - **Wrong answers** are the other cards' answers in the same set (or sets, for a deck built from several), plus the set's optional `additionalIncorrectAnswers`. They're picked fresh each play, spread so every answer shows up about equally often across the deck, and never include the card's own answer (ignoring case). A card with its own `incorrectAnswers` uses those instead; vocabulary does this, so wrong answers look alike but never sound the same.
 - Every card is in English (`appSettings.language`, `"en-US"`) unless its set has a `lang`, like `"fr-FR"` for the French alphabet. The language picks the voice and pronunciation when a card is read aloud.
@@ -198,12 +214,12 @@ The home screen is built from `appSettings.home` and the `catalog` group of `fla
 
 - `home`: the `tagline` under the title and the `intro` above the grade list.
 - `subjects`: each subject's `label` and tile `color` (`red`, `green`, `purple`, `blue`, `yellow`, or `orange`), keyed by a short name like `math` or `reading`.
-- `grades`: one entry per grade tile, in order, with its `grade` (a number, or a name like `"computer-science"` for a track that isn't a school grade; it's the `?grade=` value), `label`, tile `color` (`sky`, `violet`, `teal`, `rose`, `amber`, or any subject color), and `subjects`. Set `"pickSubject": true` to show a subject step before the decks; without it, the grade goes straight to its decks.
+- `grades`: one entry per grade tile, in order, with its `grade` (a number, or a name like `"computer-science"` for a track that isn't a school grade; it's the `?grade=` value), `label`, tile `color` (`sky`, `violet`, `teal`, `rose`, `amber`, or any subject color), and `subjects`. Set `"pickSubject": true` to show a subject step before the decks; without it, the grade goes straight to its decks. An optional `shortLabel` replaces the label on the play screen, like `"CS"` for Computer Science.
 
 Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, a `blurb` for the subject tile (it falls back to the summary), and `"available": false` to show it as coming soon. It lists its decks one of two ways:
 
 - `decks`: plain decks. On a grade without a subject step (every grade has one right now), each is badged with its subject name, since one list mixes subjects.
-- `units`: numbered units, each with a `title` and a `deck`. Units are numbered "Unit 1", "Unit 2", ... in order; one with its own `label` (like "Final") keeps it and isn't counted. A unit that's just a string, like `"Fraction Operations"`, is listed as coming soon.
+- `units`: numbered units, each with a `title` and a `deck`. Units are numbered "Unit 1", "Unit 2", ... in order; one with its own `label` (like "Final") keeps it and isn't counted. A unit that's just a string, like `"Fraction Operations"`, is listed as coming soon. A unit can hold `decks` instead of one `deck`, each with its own `title`. They're listed under the same unit number, like "Unit 1: Alphabet · Standard Letters" and "Unit 1: Alphabet · Accented Letters".
 
 ```json
 {
@@ -232,7 +248,7 @@ Each of a grade's subjects has a `subject` key, a `summary` for the grade tile, 
 
 Gameplay numbers and on-screen wording live in `appSettings`:
 
-- `multipleChoice`: `secondsPerQuestion` (the Timed limit, also shown in the home screen hint), `lowTimeSeconds` (when the timer turns to a warning), `roundSize` (cards between encouragement screens), `wrongChoices` (wrong answers shown with each written or country card), `scoring` (`firstTry` points, minus `perWrongPick` per wrong pick and `hint` for using the hint, never below `minimum`), the `encouragement` messages shown between rounds, and `speech.rate` (how fast decks read aloud are spoken; 1 is normal speed).
+- `multipleChoice`: `secondsPerQuestion` (the Timed limit, also shown in the home screen hint), `lowTimeSeconds` (when the timer turns to a warning), `roundSize` (cards between encouragement screens), `wrongChoices` (wrong answers shown with each written or country card), `scoring` (`firstTry` points, minus `perWrongPick` per wrong pick and `hint` for using the hint, never below `minimum`; the typing and voice decks use it too), the `encouragement` messages shown between rounds, and `speech.rate` (how fast decks read aloud are spoken; 1 is normal speed).
 - `typingAndVoice` (4th grade typing and voice decks): `cardsBeforeBreak`, how long the encouragement break lasts in `breakSeconds`, and its `encouragement` messages.
 - `playText`: the play screen's `title`, the cue above each question (`choiceCue` for multiple choice, `listenCue` for cards read aloud, `typingCue` for typing and voice), `promptName` (as in "Your problem"), and the end-of-deck `finishedTitle`, `choiceFinished`, and `typingFinished`. Every field is set in `default`. An entry named after a subject (or a deck's `deckType`, like `sight-words`) overrides some of them, and math decks then apply an entry named after their operation (like `decimal-operations`).
 
@@ -251,15 +267,16 @@ Unit tests use [Vitest](https://vitest.dev/) with jsdom and [Testing Library](ht
 
 ```
 tests/
-  setup.ts            jest-dom matchers; resets the URL, timers, and stubs after each test
+  setup.ts            jest-dom matchers and <dialog> methods for jsdom; resets the URL, timers, stubs, and local storage after each test
+  progress/           saving scores: recent and best results, ranking, unfinished decks, and unreadable or unavailable storage
   helpers/            seeded Math.random, fake SpeechRecognition and speechSynthesis, animation-frame stubs, and flashcards.json fetch stubs
   data/               every deck builder and generator, flashcards.json checks, the deck catalog and unit codes
   services/           loading flashcards.json
   nlp/                answer matching and speech recognition
-  components/         FlashCard, ListenCard, CountryMap, SubjectSelector
-  modes/              multiple-choice play: Ready screen, scoring, hints, timer, pause, rounds
-  routes/             home navigation, and typing/voice play (one-shot and continuous mic)
-  App.test.ts         flashcard loading and errors, deck launching, deep links, back/forward, footer, and main.ts
+  components/         FlashCard, ListenCard, CountryMap, SubjectSelector, the scores window, deck descriptions, the definitions and words window
+  modes/              multiple-choice play: Ready screen, scoring, hints, timer, pause, rounds, reporting progress after each card
+  routes/             home navigation, and typing/voice play (scoring, one-shot and continuous mic)
+  App.test.ts         flashcard loading and errors, deck launching, deep links, back/forward, saving finished and unfinished scores, footer, and main.ts
 ```
 
 `npm run coverage` fails if statements, branches, functions, or lines drop below 100%. The HTML report is written to `coverage/index.html`.
@@ -269,11 +286,11 @@ A few things to know when adding tests:
 - Svelte components are compiled without dev mode for tests (see `vitest.config.ts`), because dev mode adds generated code that no test can reach.
 - Random decks are made repeatable with `seedRandom(seed)`, or steered to a specific case with `queueRandom([...])`, both from `tests/helpers/random.ts`.
 - A few modules export a `__testing` object so their internal safety nets (such as the decimal-operations fallbacks) can be tested directly.
-- Svelte creates an `{#if}` block's content with a separate code path from the one that updates it. If a condition can never be true when its block first appears, that path can't be covered. The play screens toggle `hidden` on the pause overlay, hint panel, and feedback panels instead of wrapping them in `{#if}`.
+- Svelte creates an `{#if}` block's content with a separate code path from the one that updates it. If a condition can never be true when its block first appears, that path can't be covered. The play screens toggle `hidden` on the pause overlay, hint panel, and feedback panels instead of wrapping them in `{#if}`, and the scores window and the definitions and words window are `<dialog>`s that are always on the page and opened with `showModal()`. The same goes for text that picks between two wordings: "More…"/"Less" and "1 term"/"24 terms" are worked out in the script, because a choice written in the markup is also evaluated when the block first appears, when only one side is possible.
 
 ## Scaffolded for later
 
-The original scaffold also includes child profiles (`src/profiles/`), progress, streak, and accuracy tracking (`src/progress/`), character encouragement overlays (`src/characters/`), and a stats screen. These aren't connected to the app yet.
+The original scaffold also includes child profiles (`src/profiles/`), streak, accuracy, and time tracking (the rest of `src/progress/`), character encouragement overlays (`src/characters/`), and a stats screen. These aren't connected to the app yet.
 
 ## Credits
 

@@ -8,11 +8,14 @@
     getDeckOptionById,
     playTextFor,
     resolveDeck,
+    subjectLabelFor,
     subjectStepFor,
     type DeckOption
   } from "./data/decks";
   import type { FlashcardData, InteractionMode, SubjectDeck } from "./data/CardTypes";
   import { readNav, writeNav, type PlayMode } from "./nav";
+  import type { DeckProgress } from "./progress/ProgressModel";
+  import { ProgressStore } from "./progress/ProgressStore";
   import { loadFlashcards } from "./services/flashcardService";
 
   /** "loading" covers opening a deck straight from the URL, so home doesn't flash first. */
@@ -28,6 +31,11 @@
   }
 
   let selectedDeck: SubjectDeck | null = null;
+  /** The catalog entry and mode of the deck being played, for saving its score. */
+  let selectedOption: DeckOption | null = null;
+  let selectedMode: PlayMode = "practice";
+  /** The deck in play's latest progress until it's finished; saved as unfinished if the player leaves first. */
+  let unsavedProgress: DeckProgress | null = null;
   let useMicrophone = false;
   let interaction: InteractionMode = "voice-or-type";
   let timed = false;
@@ -50,7 +58,38 @@
     return option ? { option, mode: modeFor(option, nav.mode) } : null;
   };
 
+  const saveResult = (progress: DeckProgress) => {
+    const option = selectedOption as DeckOption;
+    ProgressStore.record({
+      deckId: option.id,
+      title: option.title,
+      context: `${option.gradeLabel} · ${subjectLabelFor(data as FlashcardData, option.subject)}`,
+      mode: selectedMode,
+      ...progress,
+      finishedAt: new Date().toISOString()
+    });
+  };
+
+  const trackProgress = (event: CustomEvent<DeckProgress>) => {
+    const progress = event.detail;
+    if (progress.cardsPlayed >= progress.cardsTotal) {
+      saveResult(progress);
+      unsavedProgress = null;
+    } else {
+      unsavedProgress = progress;
+    }
+  };
+
+  /** Every way out of a deck (back, home, history, another deck, closing the tab) comes through here. */
+  const saveUnfinished = () => {
+    if (unsavedProgress) {
+      saveResult(unsavedProgress);
+      unsavedProgress = null;
+    }
+  };
+
   const resetPlay = () => {
+    saveUnfinished();
     startRequest += 1;
     useMicrophone = false;
     interaction = "voice-or-type";
@@ -59,6 +98,7 @@
   };
 
   const launch = async ({ option, mode }: PlayRequest, how: "push" | "replace" | null) => {
+    saveUnfinished();
     const request = ++startRequest;
     const deck = await resolveDeck(option, data as FlashcardData);
     if (request !== startRequest) {
@@ -68,6 +108,8 @@
     timed = mode === "timed";
     useMicrophone = mode === "microphone";
     selectedDeck = deck;
+    selectedOption = option;
+    selectedMode = mode;
     playSession += 1;
     view = "play";
     if (how) {
@@ -146,10 +188,12 @@
 
   onMount(() => {
     window.addEventListener("popstate", syncFromUrl);
+    window.addEventListener("pagehide", saveUnfinished);
   });
 
   onDestroy(() => {
     window.removeEventListener("popstate", syncFromUrl);
+    window.removeEventListener("pagehide", saveUnfinished);
   });
 </script>
 
@@ -173,6 +217,7 @@
             settings={data.appSettings.multipleChoice}
             text={playTextFor(data, selectedDeck)}
             language={data.appSettings.language}
+            on:progress={trackProgress}
             on:back={backToHome}
             on:home={goToStart}
           />
@@ -181,7 +226,9 @@
             deck={selectedDeck}
             autoMic={useMicrophone}
             settings={data.appSettings.typingAndVoice}
+            scoring={data.appSettings.multipleChoice.scoring}
             text={playTextFor(data, selectedDeck)}
+            on:progress={trackProgress}
             on:back={backToHome}
             on:home={goToStart}
           />

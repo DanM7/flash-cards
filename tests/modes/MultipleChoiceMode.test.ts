@@ -33,9 +33,11 @@ const renderMode = (deck: SubjectDeck, timed = false, changes: Partial<MultipleC
   });
   const onBack = vi.fn();
   const onHome = vi.fn();
+  const onProgress = vi.fn();
   result.component.$on("back", onBack);
   result.component.$on("home", onHome);
-  return { ...result, onBack, onHome };
+  result.component.$on("progress", onProgress);
+  return { ...result, onBack, onHome, reported: () => onProgress.mock.calls.map(([event]) => event.detail) };
 };
 
 const readyCard = () => screen.getByRole("button", { name: /Tap here to begin/ });
@@ -93,24 +95,29 @@ describe("MultipleChoiceMode", () => {
   });
 
   it("scores first-try answers and finishes the deck", async () => {
-    const { onBack, onHome } = renderMode(mathDeck(3));
+    const { onBack, onHome, reported } = renderMode(mathDeck(3));
     expect(screen.getByRole("heading", { name: "Math facts" })).toBeInTheDocument();
-    expect(screen.getByText("Grade 2 · Practice")).toBeInTheDocument();
+    expect(screen.getByText("Grade 2")).toBeInTheDocument();
     await begin();
-    expect(progress()).toBe("Card 1 of 3 · Score: 0 · Percentage: —");
+    expect(progress()).toBe("Card 1 of 3 · Score: 0");
     expect(screen.queryByRole("timer")).toBeNull();
 
     await fireEvent.click(choice("A"));
     expect(choice("A")).toHaveClass("fc-choice--correct");
     expect(choice("B")).toBeDisabled();
     await wait(650);
-    expect(progress()).toBe("Card 2 of 3 · Score: 10 · Percentage: 100%");
+    expect(progress()).toBe("Card 2 of 3 · Score: 10 (100%)");
 
-    await answerRight();
+    await fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     await answerRight();
     expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
-    expect(screen.getByText("Score: 30")).toBeInTheDocument();
-    expect(screen.getByText("Percentage: 100%")).toBeInTheDocument();
+    expect(reported()).toEqual([
+      { score: 10, possible: 10, cardsPlayed: 1, cardsTotal: 3 },
+      { score: 10, possible: 20, cardsPlayed: 2, cardsTotal: 3 },
+      { score: 20, possible: 30, cardsPlayed: 3, cardsTotal: 3 }
+    ]);
+    expect(screen.getByText("Score: 20")).toBeInTheDocument();
+    expect(screen.getByText("Percentage: 67%")).toBeInTheDocument();
     expect(screen.getByText(/Great math practice\./)).toBeInTheDocument();
 
     await fireEvent.click(screen.getByRole("button", { name: "Back to home" }));
@@ -121,6 +128,15 @@ describe("MultipleChoiceMode", () => {
     expect(onHome).toHaveBeenCalledOnce();
   });
 
+  it("reports nothing more once it's closed, even mid-way through moving to the next card", async () => {
+    const { unmount, reported } = renderMode(mathDeck(2));
+    await begin();
+    await fireEvent.click(choice("A"));
+    unmount();
+    await wait(650);
+    expect(reported()).toEqual([]);
+  });
+
   it("follows the scoring, round size, and encouragement it's given", async () => {
     renderMode(mathDeck(3, { hint: "Think about it." }), false, {
       roundSize: 2,
@@ -128,7 +144,7 @@ describe("MultipleChoiceMode", () => {
       encouragement: ["Keep going!"]
     });
     await begin();
-    expect(progress()).toBe("Round 1 of 2 · Card 1 of 2 · Score: 0 · Percentage: —");
+    expect(progress()).toBe("Round 1 of 2 · Card 1 of 2 · Score: 0");
     await fireEvent.click(choice("B"));
     await answerRight();
     expect(progress()).toContain("Score: 3");
@@ -139,7 +155,7 @@ describe("MultipleChoiceMode", () => {
     await answerRight();
     // 5 − 2 × 2 − 1 is 0, so the minimum of 2 applies.
     expect(screen.getByText("Keep going!")).toBeInTheDocument();
-    expect(screen.getByText("Round 1 of 2 done · Score: 5 · Percentage: 50%")).toBeInTheDocument();
+    expect(screen.getByText("Round 1 of 2 done · Score: 5 (50%)")).toBeInTheDocument();
   });
 
   it("keeps wrong picks red, and takes points off for misses and hints", async () => {
@@ -171,7 +187,7 @@ describe("MultipleChoiceMode", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     await fireEvent.click(screen.getByRole("button", { name: "Hide hint" }));
     await wait(650);
-    expect(progress()).toBe("Card 2 of 2 · Score: 1 · Percentage: 10%");
+    expect(progress()).toBe("Card 2 of 2 · Score: 1 (10%)");
     expect(screen.queryByRole("note")).toBeNull();
 
     await fireEvent.click(choice("B"));
@@ -186,7 +202,7 @@ describe("MultipleChoiceMode", () => {
     const skip = screen.getByRole("button", { name: "Skip" });
     expect(skip).toHaveClass("fc-action-row__span");
     await fireEvent.click(skip);
-    expect(progress()).toBe("Card 2 of 2 · Score: 0 · Percentage: 0%");
+    expect(progress()).toBe("Card 2 of 2 · Score: 0 (0%)");
     await fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     expect(screen.getByText("Percentage: 0%")).toBeInTheDocument();
   });
@@ -194,27 +210,27 @@ describe("MultipleChoiceMode", () => {
   it("breaks the deck into rounds of ten with an encouragement break between them", async () => {
     renderMode(mathDeck(12), true);
     await begin();
-    expect(progress()).toBe("Round 1 of 2 · Card 1 of 10 · Score: 0 · Percentage: —");
+    expect(progress()).toBe("Round 1 of 2 · Card 1 of 10 · Score: 0");
     for (let i = 0; i < 9; i += 1) {
       await fireEvent.click(screen.getByRole("button", { name: "Skip" }));
     }
     await answerRight();
 
     const status = screen.getByRole("status");
-    expect(status).toHaveTextContent("Round 1 of 2 done · Score: 10 · Percentage: 10%");
+    expect(status).toHaveTextContent("Round 1 of 2 done · Score: 10 (10%)");
     expect(screen.queryByRole("timer")).toBeNull();
     await wait(30_000);
     expect(screen.getByRole("status")).toBeInTheDocument();
 
     await fireEvent.click(screen.getByRole("button", { name: "Next Round →" }));
-    expect(progress()).toBe("Round 2 of 2 · Card 1 of 10 · Score: 10 · Percentage: 10%");
+    expect(progress()).toBe("Round 2 of 2 · Card 1 of 10 · Score: 10 (10%)");
     expect(timerText()).toBe("20s");
   });
 
   describe("timed", () => {
     it("counts down, turns red when time is low, and reveals the answer when time runs out", async () => {
       renderMode(mathDeck(2, { hint: "Carry the one." }), true);
-      expect(screen.getByText("Grade 2 · Timed")).toBeInTheDocument();
+      expect(screen.getByText("Grade 2")).toBeInTheDocument();
       expect(timerText()).toBe("20s");
       await wait(5_000);
       // The clock waits for Ready.
@@ -234,10 +250,10 @@ describe("MultipleChoiceMode", () => {
       expect(choice("C")).toBeDisabled();
       expect(screen.queryByRole("note")).toBeNull();
       expect(screen.getByRole("button", { name: "Pause" })).toBeDisabled();
-      expect(progress()).toContain("Percentage: 0%");
+      expect(progress()).toContain("Score: 0 (0%)");
 
       await fireEvent.click(screen.getByRole("button", { name: "Next →" }));
-      expect(progress()).toBe("Card 2 of 2 · Score: 0 · Percentage: 0%");
+      expect(progress()).toBe("Card 2 of 2 · Score: 0 (0%)");
       expect(timerText()).toBe("20s");
       expect(screen.getByRole("timer")).not.toHaveClass("fc-timer--low");
 
@@ -324,7 +340,7 @@ describe("MultipleChoiceMode", () => {
     const mapCue = () => document.querySelector(".map-card__label")?.textContent;
     renderMode(deck, true);
     expect(screen.getByRole("heading", { name: "Geography" })).toBeInTheDocument();
-    expect(screen.getByText("Unit 3: South America · Timed")).toBeInTheDocument();
+    expect(screen.getByText("Unit 3: South America")).toBeInTheDocument();
     await begin();
     const firstCue = mapCue();
     expect(["Name this country", "Which country is this?"]).toContain(firstCue);
@@ -421,7 +437,7 @@ describe("MultipleChoiceMode", () => {
       renderMode({
         subject: "french",
         grade: 6,
-        unitLabel: "Unit 1: Alphabet",
+        unitLabel: "Unit 1: Alphabet · Accented Letters",
         listen: true,
         cards: [{ prompt: "e accent aigu", answers: ["é"], choices: ["é", "è", "ê", "e"], lang: "fr-FR" }]
       });
@@ -452,13 +468,13 @@ describe("MultipleChoiceMode", () => {
   });
 
   it.each([
-    [{ subject: "math", operation: "decimal-operations", unitLabel: "Unit 1: Decimal Operations", cards: [] }, "Decimal Operations", "Unit 1: Decimal Operations · Practice", "Solid decimal practice."],
-    [{ subject: "math", operation: "addition", cards: [] }, "Math facts", "Multiple choice · Practice", "Great math practice."],
-    [{ subject: "science", grade: 6, unitLabel: "Unit 2: Human Body", cards: [] }, "Science", "Unit 2: Human Body · Practice", "Nice studying."],
-    [{ subject: "french", grade: 6, unitLabel: "", cards: [] }, "French", "Multiple choice · Practice", "Nice studying."],
-    [{ subject: "sight-words", grade: 4, cards: [] }, "Speech & Typing", "Multiple choice · Practice", "Nice studying."],
-    [{ subject: "vocabulary", grade: 4, listen: true, cards: [] }, "Vocabulary", "Multiple choice · Practice", "Great listening."],
-    [{ subject: "custom", cards: [] }, "Practice", "Multiple choice · Practice", "Nice studying."]
+    [{ subject: "math", operation: "decimal-operations", unitLabel: "Unit 1: Decimal Operations", cards: [] }, "Decimal Operations", "Unit 1: Decimal Operations", "Solid decimal practice."],
+    [{ subject: "math", operation: "addition", cards: [] }, "Math facts", "Multiple choice", "Great math practice."],
+    [{ subject: "science", grade: 6, unitLabel: "Unit 2: Human Body", cards: [] }, "Science", "Unit 2: Human Body", "Nice studying."],
+    [{ subject: "french", grade: 6, unitLabel: "", cards: [] }, "French", "Multiple choice", "Nice studying."],
+    [{ subject: "sight-words", grade: 4, cards: [] }, "Speech & Typing", "Multiple choice", "Nice studying."],
+    [{ subject: "vocabulary", grade: 4, listen: true, cards: [] }, "Vocabulary", "Multiple choice", "Great listening."],
+    [{ subject: "custom", cards: [] }, "Practice", "Multiple choice", "Nice studying."]
   ] as [SubjectDeck, string, string, string][])("titles a %s deck and finishes an empty one", (deck, title, subtitle, closing) => {
     renderMode(deck);
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();

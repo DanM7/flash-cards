@@ -3,6 +3,7 @@ import type { FlashcardData } from "../../src/data/CardTypes";
 import {
   cardCount,
   colorFor,
+  deckReview,
   deckDescription,
   deckOptions,
   findDeckByUnit,
@@ -152,6 +153,23 @@ describe("deck catalog", () => {
     expect(math.filter((unit) => !unit.option)).toHaveLength(9);
   });
 
+  it("lists a unit split into several decks as one row per deck, under the same unit number", () => {
+    const french = unitsFor(flashcardData, 6, "french") ?? [];
+    expect(french.map((unit) => [unit.label, unit.title, unit.option?.id ?? null])).toEqual([
+      ["Unit 1", "Alphabet · Standard Letters", "6-french-letters"],
+      ["Unit 1", "Alphabet · Accented Letters", "6-french-accented-letters"],
+      ["Unit 2", "Communication", null],
+      ["Unit 3", "Colors", "6-french-colors"],
+      ["Unit 4", "Food", null],
+      ["Unit 5", "School", null]
+    ]);
+    expect(option("6-french-accented-letters")).toMatchObject({
+      title: "Unit 1: Alphabet · Accented Letters",
+      badge: "French · Unit 1",
+      unitName: "Unit 1"
+    });
+  });
+
   it("has no units list for subjects that list plain decks, or for unknown grades", () => {
     expect(unitsFor(flashcardData, 2, "math")).toBeNull();
     expect(unitsFor(flashcardData, 9, "math")).toBeNull();
@@ -217,6 +235,66 @@ describe("deckDescription", () => {
       "Name all 50 states from a blank U.S. map."
     );
     expect(deckDescription(option("4-geography-state-capitals"), flashcardData)).toContain("50 states.");
+  });
+
+  it("offers a term → definition deck's definitions in set order", () => {
+    const review = deckReview(option("computer-science-angular-beginner"), flashcardData);
+    expect(review?.kind).toBe("definitions");
+    const definitions = review?.kind === "definitions" ? review.definitions : [];
+    expect(definitions).toHaveLength(24);
+    expect(definitions[0]).toEqual({ term: "Component", definition: "A class, template, and styles that control a view." });
+  });
+
+  it.each([2, 3, 4])("offers %s grade Reading Vocabulary's words in set order", (grade) => {
+    const set = flashcardData.subjectData.reading.cardSets?.[`vocabulary-grade${grade}`];
+    expect(deckReview(option(`${grade}-reading-vocabulary`), flashcardData)).toEqual({
+      kind: "words",
+      words: Object.keys(set?.cards ?? {})
+    });
+  });
+
+  it("offers the State Capitals deck's states and capitals, for just its regions when it names them", () => {
+    const capitals = option("4-geography-state-capitals");
+    const review = deckReview(capitals, flashcardData);
+    expect(review?.kind).toBe("capitals");
+    const all = review?.kind === "capitals" ? review.definitions : [];
+    expect(all).toHaveLength(50);
+    expect(all).toContainEqual({ term: "Texas", definition: "Austin" });
+
+    const { geography } = flashcardData.subjectData;
+    const west = geography.unitedStates.filter((state) => state.region === "west");
+    expect(deckReview({ ...capitals, build: { type: "stateCapitals", regions: ["west"] } }, flashcardData)).toEqual({
+      kind: "capitals",
+      definitions: west.map((state) => ({ term: state.name, definition: state.capital }))
+    });
+    expect(deckReview({ ...capitals, build: { type: "stateCapitals", regions: ["nowhere"] } }, flashcardData)).toBeNull();
+  });
+
+  it("offers nothing for other decks", () => {
+    for (const id of ["6-science-cells", "6-french-letters", "4-reading-sight-words", "2-math-addition", "4-geography-states"]) {
+      expect(deckReview(option(id), flashcardData), id).toBeNull();
+    }
+  });
+
+  it("skips sets the file doesn't have, and definition cards written as objects", () => {
+    const data = structuredClone(flashcardData);
+    const sets = data.subjectData.angular.cardSets as NonNullable<FlashcardData["subjectData"]["angular"]["cardSets"]>;
+    sets.beginner.cards = { Pipe: "Transforms a value in a template.", "What is a pipe?": { answer: "Pipe" } };
+    const deck = { ...option("computer-science-angular-beginner"), build: { type: "cards" as const, sets: ["missing", "beginner"] } };
+    expect(deckReview(deck, data)).toEqual({
+      kind: "definitions",
+      definitions: [{ term: "Pipe", definition: "Transforms a value in a template." }]
+    });
+    const nothing = { ...deck, build: { type: "cards" as const, sets: ["missing"] } };
+    expect(deckReview(nothing, data)).toBeNull();
+    expect(deckReview({ ...nothing, build: { ...nothing.build, deckType: "vocabulary" as const } }, data)).toBeNull();
+  });
+
+  it("lists the word each vocabulary card answers with", () => {
+    const data = structuredClone(flashcardData);
+    const reading = data.subjectData.reading;
+    reading.cardSets = { "vocabulary-grade2": { cards: { colour: "color", their: { answer: "there" }, the: {} } } };
+    expect(deckReview(option("2-reading-vocabulary"), data)).toEqual({ kind: "words", words: ["color", "there", "the"] });
   });
 
   it("leaves descriptions without a count alone", () => {
@@ -330,7 +408,7 @@ describe("resolveDeck", () => {
     expect(findDeckByUnit(flashcardData, "computer-science", subject, unit)).toBe(option);
     const deck = await resolveDeck(option, flashcardData);
     expect(deck).toMatchObject({ subject, grade: "computer-science" });
-    expect("unitLabel" in deck && deck.unitLabel).toBe(`Computer Science · ${option.title}`);
+    expect("unitLabel" in deck && deck.unitLabel).toBe(`CS · ${option.title}`);
     // Written term → definition, played definition → term.
     const cardSet = flashcardData.subjectData[subject].cardSets?.[set];
     expect(cardSet?.show).toBe("value");

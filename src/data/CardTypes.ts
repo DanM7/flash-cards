@@ -147,6 +147,8 @@ export type UnitEntry =
       label?: string;
       title: string;
       deck?: Omit<DeckEntry, "title">;
+      /** A unit split into several decks, each listed as "Unit 1: Alphabet · Standard Letters". */
+      decks?: DeckEntry[];
     };
 
 export interface GradeSubject {
@@ -167,6 +169,8 @@ export interface GradeSubject {
 export interface Grade {
   grade: GradeKey;
   label: string;
+  /** Shorter label for the play screen, like "CS"; falls back to the label. */
+  shortLabel?: string;
   /** sky, violet, teal, rose, amber, or any subject color. */
   color: string;
   /** Show a subject step before the decks. */
@@ -183,19 +187,22 @@ export interface MultipleChoiceSettings {
   roundSize: number;
   /** Wrong answers shown with each written or map card. */
   wrongChoices: number;
-  scoring: {
-    firstTry: number;
-    /** Taken off for each wrong pick. */
-    perWrongPick: number;
-    /** Taken off for opening the hint. */
-    hint: number;
-    /** A card answered right never scores less than this. */
-    minimum: number;
-  };
+  /** Also used for typing and voice decks. */
+  scoring: ScoringSettings;
   /** One is picked at random for each break. */
   encouragement: string[];
   /** Voice for decks whose prompts are read aloud. */
   speech: SpeechSettings;
+}
+
+export interface ScoringSettings {
+  firstTry: number;
+  /** Taken off for each wrong pick, or each wrong typed or spoken answer. */
+  perWrongPick: number;
+  /** Taken off for opening the hint. */
+  hint: number;
+  /** A card answered right never scores less than this. */
+  minimum: number;
 }
 
 export interface SpeechSettings {

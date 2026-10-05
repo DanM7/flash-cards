@@ -26,6 +26,7 @@ export interface DeckOption {
   id: string;
   unit: string;
   grade: GradeKey;
+  /** The grade's short label when it has one, for the play screen. */
   gradeLabel: string;
   /** Key in the catalog's `subjects`. */
   subject: string;
@@ -50,6 +51,7 @@ interface LabeledUnit {
   label: string;
   title: string;
   deck?: Omit<DeckEntry, "title">;
+  decks?: DeckEntry[];
 }
 
 const labeled = (units: UnitEntry[]): LabeledUnit[] => {
@@ -63,6 +65,12 @@ const labeled = (units: UnitEntry[]): LabeledUnit[] => {
     return { ...entry, label: `Unit ${number}` };
   });
 };
+
+/** A unit's decks with the titles they're listed under; empty for units that are coming soon. */
+const decksOf = (unit: LabeledUnit): { title: string; deck: Omit<DeckEntry, "title"> }[] =>
+  unit.deck
+    ? [{ title: unit.title, deck: unit.deck }]
+    : (unit.decks ?? []).map((deck) => ({ title: `${unit.title} · ${deck.title}`, deck }));
 
 export const subjectLabelFor = (data: FlashcardData, subject: string): string =>
   data.catalog.subjects[subject]?.label ?? subject;
@@ -94,7 +102,7 @@ const optionsOf = (data: FlashcardData): DeckOption[] =>
         id: deckId(grade.grade, entry.subject, deck.unit),
         unit: deck.unit,
         grade: grade.grade,
-        gradeLabel: grade.label,
+        gradeLabel: grade.shortLabel ?? grade.label,
         subject: entry.subject,
         unitName,
         title,
@@ -106,9 +114,9 @@ const optionsOf = (data: FlashcardData): DeckOption[] =>
       return [
         ...(entry.decks ?? []).map((deck) => toOption(deck, deck.title, subjectLabel)),
         ...labeled(entry.units ?? []).flatMap((unit) =>
-          unit.deck
-            ? [toOption(unit.deck, `${unit.label}: ${unit.title}`, `${subjectLabel} · ${unit.label}`, unit.label)]
-            : []
+          decksOf(unit).map(({ title, deck }) =>
+            toOption(deck, `${unit.label}: ${title}`, `${subjectLabel} · ${unit.label}`, unit.label)
+          )
         )
       ];
     })
@@ -160,6 +168,49 @@ export function deckDescription(option: DeckOption, data: FlashcardData): string
   return option.description.replace("{count}", String(cardCount(option, data)));
 }
 
+/** A term and what it means. */
+export interface Definition {
+  term: string;
+  definition: string;
+}
+
+/** What a deck's summary offers to look over before playing. Capitals are listed as state → capital. */
+export type DeckReview =
+  | { kind: "definitions" | "capitals"; definitions: Definition[] }
+  | { kind: "words"; words: string[] };
+
+/**
+ * A vocabulary deck's words, a capitals deck's states and capitals, or the terms and definitions in a
+ * deck's term → definition sets (`show: "value"`), in file order; null for every other deck. Cards
+ * written as objects show their key, so they aren't definitions.
+ */
+export function deckReview(option: DeckOption, data: FlashcardData): DeckReview | null {
+  const { build } = option;
+  if (build.type === "stateCapitals") {
+    const capitals = statesIn(data.subjectData.geography, build.regions).map((state) => ({
+      term: state.name,
+      definition: state.capital
+    }));
+    return capitals.length > 0 ? { kind: "capitals", definitions: capitals } : null;
+  }
+  if (build.type !== "cards") {
+    return null;
+  }
+  const sets = build.sets.flatMap((key) => cardSetFor(data, option, key) ?? []);
+  if (build.deckType === "vocabulary") {
+    const words = sets.flatMap((set) =>
+      Object.entries(set.cards).map(([key, entry]) => (typeof entry === "string" ? entry : (entry.answer ?? key)))
+    );
+    return words.length > 0 ? { kind: "words", words } : null;
+  }
+  const definitions = sets.flatMap((set) =>
+    set.show === "value"
+      ? Object.entries(set.cards).flatMap(([term, entry]) => (typeof entry === "string" ? [{ term, definition: entry }] : []))
+      : []
+  );
+  return definitions.length > 0 ? { kind: "definitions", definitions } : null;
+}
+
 export function getDecksForGrade(data: FlashcardData, grade: GradeKey): DeckOption[] {
   return deckOptions(data).filter((option) => option.grade === grade);
 }
@@ -168,15 +219,20 @@ export function getDeckOptionById(data: FlashcardData, id: string): DeckOption |
   return deckOptions(data).find((option) => option.id === id) ?? null;
 }
 
-/** The units list for a grade's subject, or null when the subject lists plain decks. */
+/** The units list for a grade's subject, one row per deck, or null when the subject lists plain decks. */
 export function unitsFor(data: FlashcardData, grade: GradeKey, subject: string): UnitView[] | null {
   const units = gradeFor(data, grade)?.subjects.find((entry) => entry.subject === subject)?.units;
   return units
-    ? labeled(units).map((unit) => ({
-        label: unit.label,
-        title: unit.title,
-        option: unit.deck ? getDeckOptionById(data, deckId(grade, subject, unit.deck.unit)) : null
-      }))
+    ? labeled(units).flatMap((unit) => {
+        const decks = decksOf(unit);
+        return decks.length > 0
+          ? decks.map(({ title, deck }) => ({
+              label: unit.label,
+              title,
+              option: getDeckOptionById(data, deckId(grade, subject, deck.unit))
+            }))
+          : [{ label: unit.label, title: unit.title, option: null }];
+      })
     : null;
 }
 

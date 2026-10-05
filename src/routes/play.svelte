@@ -2,15 +2,18 @@
   import { createEventDispatcher, onDestroy } from "svelte";
   import HomeButton from "../components/HomeButton.svelte";
   import FlashCard from "../components/FlashCard.svelte";
-  import type { Card, PlayText, SubjectDeck, TypingAndVoiceSettings } from "../data/CardTypes";
+  import type { Card, PlayText, ScoringSettings, SubjectDeck, TypingAndVoiceSettings } from "../data/CardTypes";
   import { AnswerInterpreter, type AnswerInterpretation } from "../nlp/AnswerInterpreter";
   import { SpeechRecognizer } from "../nlp/SpeechRecognizer";
+  import type { DeckProgress } from "../progress/ProgressModel";
+  import { pointsForCard, scoreText } from "../progress/Scoring";
 
   export let deck: SubjectDeck;
   export let autoMic = false;
   export let settings: TypingAndVoiceSettings;
+  export let scoring: ScoringSettings;
   export let text: PlayText;
-  const dispatch = createEventDispatcher<{ back: void; home: void }>();
+  const dispatch = createEventDispatcher<{ back: void; home: void; progress: DeckProgress }>();
 
   // Settings and wording are fixed for this screen, like the deck.
   const { encouragement, cardsBeforeBreak } = settings;
@@ -44,6 +47,15 @@
   let suppressFinalScoringUntil = 0;
   let cardsCompletedSinceBreak = 0;
   let sessionPaused = false;
+  let score = 0;
+  let potential = 0;
+  /** Wrong spoken answers, and different wrong words typed, on the current card. */
+  let wrongTries = 0;
+  /**
+   * Typing is checked on every keystroke, so a typed answer only counts as a wrong try once it's
+   * as long as the answer, and each wrong word only once ("here" for "hear", not "h", "he", "her").
+   */
+  let typedMisses = new Set<string>();
 
   let latestCard: Card | undefined;
   let latestEncouragementBreak = false;
@@ -74,8 +86,12 @@
     shuffledCards.length === 0
       ? ""
       : currentCardIndex >= shuffledCards.length
-        ? "Deck complete"
-        : `Card ${currentCardIndex + 1} of ${shuffledCards.length}`;
+        ? `Deck complete · ${scoreText(score, potential)}`
+        : `Card ${currentCardIndex + 1} of ${shuffledCards.length} · ${scoreText(score, potential)}`;
+
+  /** Read only by the finished screen, which is built after the last card is scored, so these needn't be reactive. */
+  const finalScore = () => score;
+  const finalPercentage = () => (potential === 0 ? "—" : `${Math.round((score / potential) * 100)}%`);
 
   $: latestCard = currentCard;
   $: latestEncouragementBreak = encouragementBreak;
@@ -205,6 +221,8 @@
 
   const afterCorrectAdvance = (heardList: string[], promptForHistory: string) => {
     pushTranscriptHistory(heardList, "correct", promptForHistory);
+    score += pointsForCard(scoring, wrongTries);
+    potential += scoring.firstTry;
     cardsCompletedSinceBreak += 1;
     goToNextCard();
 
@@ -228,6 +246,17 @@
     liveCandidates = [];
     feedback = null;
     speechError = "";
+    wrongTries = 0;
+    typedMisses = new Set();
+    dispatch("progress", { score, possible: potential, cardsPlayed: currentCardIndex, cardsTotal: shuffledCards.length });
+  };
+
+  const noteTypedMiss = ({ normalizedInput, normalizedAnswers }: AnswerInterpretation) => {
+    const shortestAnswer = Math.min(...normalizedAnswers.map((answer) => answer.length));
+    if (normalizedInput.length >= shortestAnswer && !typedMisses.has(normalizedInput)) {
+      typedMisses.add(normalizedInput);
+      wrongTries += 1;
+    }
   };
 
   const evaluateAnswer = (rawInput: string) => {
@@ -243,6 +272,8 @@
 
     if (canAutoAdvance(feedback, rawInput)) {
       afterCorrectAdvance([rawInput.trim()], card.prompt);
+    } else {
+      noteTypedMiss(feedback);
     }
   };
 
@@ -250,6 +281,7 @@
     const card = latestCard;
     if (card) {
       pushTranscriptHistory([], "incorrect", card.prompt);
+      potential += scoring.firstTry;
     }
     goToNextCard();
   };
@@ -300,7 +332,12 @@
       afterCorrectAdvance(candidates, card.prompt);
       return;
     }
-    pushTranscriptHistory(candidates, result.matchType === "ambiguous" ? "ambiguous" : "incorrect", card.prompt);
+    if (result.matchType === "ambiguous") {
+      pushTranscriptHistory(candidates, "ambiguous", card.prompt);
+      return;
+    }
+    wrongTries += 1;
+    pushTranscriptHistory(candidates, "incorrect", card.prompt);
   };
 
   const trySpeechInput = async () => {
@@ -349,6 +386,7 @@
         pushTranscriptHistory(heardList, "ambiguous", card.prompt);
       } else if (interpretation) {
         feedback = interpretation;
+        wrongTries += 1;
         pushTranscriptHistory(heardList, "incorrect", card.prompt);
       }
     } catch (error) {
@@ -621,6 +659,8 @@
     <div class="fc-complete fc-surface">
       <div class="fc-complete__icon" aria-hidden="true">★</div>
       <h3 class="fc-complete__title">{finishedTitle}</h3>
+      <p class="fc-complete__score">Score: {finalScore()}</p>
+      <p class="fc-complete__percentage">Percentage: {finalPercentage()}</p>
       <p class="fc-muted">{typingFinished}</p>
       <button type="button" class="fc-btn fc-btn--primary fc-complete__btn" on:click={() => dispatch("back")}>
         Back to home
@@ -1160,6 +1200,21 @@
     font-size: clamp(1.35rem, 4vw, 1.65rem);
     font-weight: 800;
     color: var(--fc-text);
+  }
+
+  .fc-complete__score {
+    margin: 0;
+    font-size: clamp(1.5rem, 5vw, 1.85rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--fc-primary-hover);
+  }
+
+  .fc-complete__percentage {
+    margin: calc(var(--fc-space-sm) * -1) 0 0;
+    font-size: 1.125rem;
+    font-weight: 800;
+    color: var(--fc-text-muted);
   }
 
   .fc-complete__btn {

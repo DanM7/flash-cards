@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../src/App.svelte";
 import type { MathDeck } from "../src/data/CardTypes";
 import { createWholeNumberDeck } from "../src/data/subjects/math/wholeNumberOperations";
+import { ProgressStore } from "../src/progress/ProgressStore";
 import { copyFlashcardData, stubFlashcardsFetch } from "./helpers/flashcards";
 
 vi.mock("../src/data/subjects/math/wholeNumberOperations", async (importOriginal) => {
@@ -92,7 +93,7 @@ describe("App", () => {
     expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
 
     await navigate("?grade=2&subject=math&mode=practice&unit=addition");
-    expect(await screen.findByText("2nd Grade · Addition · Practice")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Addition")).toBeInTheDocument();
     await fireEvent.click(home() as HTMLElement);
     expect(screen.getByRole("heading", { name: "Flash Cards" })).toBeInTheDocument();
     expect(shell()).not.toHaveClass("fc-shell--fit");
@@ -119,19 +120,22 @@ describe("App", () => {
   it("opens multiple-choice decks in practice or timed mode", async () => {
     await renderApp("?grade=2&subject=math");
     await startFromTopic("Subtraction", /Timed/);
-    expect(await screen.findByText("2nd Grade · Subtraction · Timed")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Subtraction")).toBeInTheDocument();
+    expect(screen.getByRole("timer")).toBeInTheDocument();
     expect(params()).toEqual({ grade: "2", subject: "math", mode: "timed", unit: "subtraction" });
 
     await click("← Back");
     await startFromTopic("Addition", "Practice");
-    expect(await screen.findByText("2nd Grade · Addition · Practice")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Addition")).toBeInTheDocument();
+    expect(screen.queryByRole("timer")).toBeNull();
     expect(params()).toEqual({ grade: "2", subject: "math", mode: "practice", unit: "addition" });
   });
 
   it("opens a deck straight from a link, without showing home first", async () => {
     await renderApp("?grade=2&subject=math&mode=TIMED&unit=Addition");
     expect(screen.queryByRole("heading", { name: "Flash Cards" })).toBeNull();
-    expect(await screen.findByText("2nd Grade · Addition · Timed")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Addition")).toBeInTheDocument();
+    expect(screen.getByRole("timer")).toBeInTheDocument();
     expect(params()).toEqual({ grade: "2", subject: "math", mode: "timed", unit: "addition" });
   });
 
@@ -153,7 +157,7 @@ describe("App", () => {
     await renderApp();
     await navigate("?grade=2&subject=math&mode=practice&unit=mixed");
     await navigate("?grade=3&subject=math&mode=practice&unit=mixed");
-    expect(await screen.findByText("3rd Grade · All Four Operations · Practice")).toBeInTheDocument();
+    expect(await screen.findByText("3rd Grade · All Four Operations")).toBeInTheDocument();
     // Following history never rewrites it.
     expect(window.location.search).toBe("?grade=3&subject=math&mode=practice&unit=mixed");
 
@@ -173,13 +177,86 @@ describe("App", () => {
     await renderApp("?grade=2&subject=math");
     await startFromTopic("Addition", "Practice");
     await startFromTopic("Subtraction", "Practice");
-    expect(await screen.findByText("2nd Grade · Subtraction · Practice")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Subtraction")).toBeInTheDocument();
 
     finishSlowDeck({ subject: "math", operation: "addition", grade: 2, cards: [{ prompt: "1 + 1", answers: ["2"] }] });
     await tick();
     await tick();
     expect(params().unit).toBe("subtraction");
     expect(screen.queryByText("You finished the deck!")).toBeNull();
+  });
+
+  it.each(["practice", "timed"])("saves the score of a finished %s deck, and shows it under the profile icon", async (mode) => {
+    vi.mocked(createWholeNumberDeck).mockReturnValueOnce({
+      subject: "math",
+      operation: "addition",
+      grade: 2,
+      cards: [{ prompt: "1 + 1", answers: ["2"], choices: ["2", "3", "4", "5"] }]
+    });
+    await renderApp(`?grade=2&subject=math&mode=${mode}&unit=addition`);
+    await click(/Tap here to begin/);
+    await click("2");
+    expect(await screen.findByText("You finished the deck!")).toBeInTheDocument();
+    expect(ProgressStore.history().recent).toEqual([
+      {
+        deckId: "2-math-addition",
+        title: "Addition",
+        context: "2nd Grade · Math",
+        mode,
+        score: 10,
+        possible: 10,
+        cardsPlayed: 1,
+        cardsTotal: 1,
+        finishedAt: expect.stringMatching(/^\d{4}-\d\d-\d\dT/)
+      }
+    ]);
+
+    await click("Back to home");
+    await click("Your scores");
+    const scores = screen.getByRole("dialog", { name: "Your scores" });
+    expect(within(scores).getAllByText("Addition")).toHaveLength(2);
+  });
+
+  const leaveDeck: Record<string, () => Promise<unknown>> = {
+    "the back button": () => click("← Back"),
+    "the house button": () => click("Home"),
+    "the browser's back button": () => navigate("?grade=2&subject=math"),
+    "opening another deck": () => navigate("?grade=2&subject=math&mode=practice&unit=subtraction"),
+    "closing the tab": async () => window.dispatchEvent(new Event("pagehide"))
+  };
+
+  it.each(Object.keys(leaveDeck))("saves a deck left part-way through by %s as unfinished, once", async (way) => {
+    vi.mocked(createWholeNumberDeck).mockReturnValueOnce({
+      subject: "math",
+      operation: "addition",
+      grade: 2,
+      cards: [
+        { prompt: "1 + 1", answers: ["2"], choices: ["2", "3", "4", "5"] },
+        { prompt: "0 + 2", answers: ["2"], choices: ["2", "3", "4", "5"] }
+      ]
+    });
+    await renderApp("?grade=2&subject=math&mode=practice&unit=addition");
+    await click(/Tap here to begin/);
+    window.dispatchEvent(new Event("pagehide"));
+    expect(ProgressStore.history().recent).toEqual([]);
+
+    await click("2");
+    expect(await screen.findByText(/^Card 2 of 2/)).toBeInTheDocument();
+    await leaveDeck[way]();
+    window.dispatchEvent(new Event("pagehide"));
+    expect(ProgressStore.history()).toEqual({
+      recent: [expect.objectContaining({ deckId: "2-math-addition", score: 10, possible: 10, cardsPlayed: 1, cardsTotal: 2 })],
+      best: []
+    });
+  });
+
+  it.each(["typing", "microphone"])("saves %s decks with their mode", async (mode) => {
+    await renderApp(`?grade=4&subject=reading&mode=${mode}&unit=sight-words`);
+    await click("Skip");
+    await click("← Back");
+    expect(ProgressStore.history().recent).toEqual([
+      expect.objectContaining({ deckId: "4-reading-sight-words", mode, score: 0, possible: 10, cardsPlayed: 1 })
+    ]);
   });
 
   it("shows a loading message until the flashcards arrive", async () => {
@@ -199,7 +276,7 @@ describe("App", () => {
     await navigate("?grade=2&subject=math&mode=practice&unit=addition");
     expect(screen.getByRole("status")).toBeInTheDocument();
     finish();
-    expect(await screen.findByText("2nd Grade · Addition · Practice")).toBeInTheDocument();
+    expect(await screen.findByText("2nd Grade · Addition")).toBeInTheDocument();
   });
 
   it("offers to try again when the flashcards can't load", async () => {
@@ -220,7 +297,7 @@ describe("App", () => {
     unmount();
     await navigate("?grade=2&subject=math&mode=practice&unit=addition");
     await tick();
-    expect(screen.queryByText("2nd Grade · Addition · Practice")).toBeNull();
+    expect(screen.queryByText("2nd Grade · Addition")).toBeNull();
   });
 });
 

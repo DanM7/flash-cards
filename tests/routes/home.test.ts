@@ -50,6 +50,20 @@ describe("home route", () => {
     expect(params()).toEqual({ grade: "", subject: "", mode: "", unit: "" });
   });
 
+  it("opens the scores from the profile icon, on any step", async () => {
+    renderHome("?grade=6&subject=french");
+    const dialog = document.querySelector("dialog") as HTMLDialogElement;
+    expect(dialog).not.toHaveAttribute("open");
+    const profile = screen.getByRole("button", { name: "Your scores" });
+    expect(profile.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    await fireEvent.click(profile);
+    expect(dialog).toHaveAttribute("open");
+    expect(within(dialog).getByRole("heading", { name: "Your scores" })).toBeInTheDocument();
+    await fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    expect(dialog).not.toHaveAttribute("open");
+    expect(screen.getByRole("heading", { name: "6th Grade · French" })).toBeInTheDocument();
+  });
+
   it("takes its tagline and intro from the file", async () => {
     const { component } = renderHome();
     const data = copyFlashcardData();
@@ -167,6 +181,63 @@ describe("home route", () => {
     expect(started()).toEqual([
       { deckId: "computer-science-angular-expert", useMicrophone: false, interaction: "multiple-choice", timed: false }
     ]);
+  });
+
+  it("shows a term → definition deck's definitions from its summary, before playing", async () => {
+    const { started } = renderHome("?grade=computer-science&subject=angular");
+    const definitions = document.querySelectorAll("dialog")[1];
+    expect(definitions).not.toHaveAttribute("open");
+
+    await fireEvent.click(topic("Beginner").getByRole("button", { name: "View definitions" }));
+    expect(definitions).toHaveAttribute("open");
+    const modal = within(definitions);
+    expect(modal.getByRole("heading", { name: "Angular · Beginner" })).toBeInTheDocument();
+    expect(modal.getByText("24 terms")).toBeInTheDocument();
+    expect(modal.getByText("Component").nextElementSibling).toHaveTextContent("A class, template, and styles that control a view.");
+    await fireEvent.click(modal.getByRole("button", { name: "Close" }));
+    expect(definitions).not.toHaveAttribute("open");
+
+    await fireEvent.click(topic("Mastery").getByRole("button", { name: "View definitions" }));
+    expect(modal.getByRole("heading", { name: "Angular · Mastery" })).toBeInTheDocument();
+    expect(modal.getByText("20 terms")).toBeInTheDocument();
+    expect(started()).toEqual([]);
+  });
+
+  it("shows a Reading Vocabulary deck's words from its summary", async () => {
+    const { started } = renderHome("?grade=2&subject=reading");
+    await fireEvent.click(topic("Vocabulary").getByRole("button", { name: "View words" }));
+    const modal = within(document.querySelectorAll("dialog")[1]);
+    expect(modal.getByRole("heading", { name: "Reading · Vocabulary" })).toBeInTheDocument();
+    expect(modal.getByText("100 words")).toBeInTheDocument();
+    const words = modal.getAllByRole("listitem").map((item) => item.textContent);
+    expect(words).toHaveLength(100);
+    expect(words).toEqual([...words].sort((a, b) => (a as string).localeCompare(b as string, undefined, { sensitivity: "base" })));
+    expect(modal.queryByRole("definition")).toBeNull();
+    expect(started()).toEqual([]);
+  });
+
+  it("shows the State Capitals deck's states and capitals from its summary", async () => {
+    renderHome("?grade=4&subject=geography");
+    expect(topic("States").queryByRole("button", { name: /^View/ })).toBeNull();
+    await fireEvent.click(topic("State Capitals").getByRole("button", { name: "View capitals" }));
+    const modal = within(document.querySelectorAll("dialog")[1]);
+    expect(modal.getByRole("heading", { name: "Geography · State Capitals" })).toBeInTheDocument();
+    expect(modal.getByText("50 states")).toBeInTheDocument();
+    const states = modal.getAllByRole("term").map((term) => term.textContent);
+    expect(states.slice(0, 2)).toEqual(["Alabama", "Alaska"]);
+    expect(modal.getByText("Alabama").nextElementSibling).toHaveTextContent("Montgomery");
+  });
+
+  it("only offers definitions on decks that have them, including units", async () => {
+    const data = copyFlashcardData();
+    const science = data.subjectData.science.cardSets as NonNullable<FlashcardData["subjectData"]["science"]["cardSets"]>;
+    science.cells.show = "value";
+    renderHome("?grade=6&subject=science", data);
+    expect(topic("Unit 2: Human Body").queryByRole("button", { name: "View definitions" })).toBeNull();
+    await fireEvent.click(topic("Unit 1: Cells").getByRole("button", { name: "View definitions" }));
+    const definitions = document.querySelectorAll("dialog")[1];
+    expect(within(definitions).getByRole("heading", { name: "Science · Unit 1: Cells" })).toBeInTheDocument();
+    expect(within(definitions).getByText("Cell")).toBeInTheDocument();
   });
 
   it("lists units, including ones that are coming soon and the geography final", async () => {

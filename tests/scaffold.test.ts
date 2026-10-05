@@ -10,8 +10,6 @@ import VoiceMode from "../src/modes/voice-only/VoiceMode.svelte";
 import { ProfileModel } from "../src/profiles/ProfileModel";
 import { ProfileStore } from "../src/profiles/ProfileStore";
 import { AccuracyTracker } from "../src/progress/AccuracyTracker";
-import { ProgressModel } from "../src/progress/ProgressModel";
-import { ProgressStore } from "../src/progress/ProgressStore";
 import { StreakTracker } from "../src/progress/StreakTracker";
 import { TimeTracker } from "../src/progress/TimeTracker";
 import SelectGrade from "../src/routes/select-grade.svelte";
@@ -38,7 +36,7 @@ describe("scaffold placeholders", () => {
     expect(() => render(component)).not.toThrow();
   });
 
-  it.each([ProfileModel, ProfileStore, AccuracyTracker, ProgressModel, ProgressStore, StreakTracker, TimeTracker])(
+  it.each([ProfileModel, ProfileStore, AccuracyTracker, StreakTracker, TimeTracker])(
     "%o can be created",
     (Model) => {
       expect(new Model()).toBeInstanceOf(Model);

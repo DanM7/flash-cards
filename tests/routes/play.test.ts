@@ -16,18 +16,25 @@ const words = (...list: string[]): SubjectDeck => ({
 
 const renderPlay = (deck: SubjectDeck, autoMic = false, changes: Partial<TypingAndVoiceSettings> = {}) => {
   const settings = { ...flashcardData.appSettings.typingAndVoice, ...changes };
-  const result = render(PlayRoute, { deck, autoMic, settings, text: playTextFor(flashcardData, deck) });
+  const { scoring } = flashcardData.appSettings.multipleChoice;
+  const result = render(PlayRoute, { deck, autoMic, settings, scoring, text: playTextFor(flashcardData, deck) });
   const onBack = vi.fn();
   const onHome = vi.fn();
+  const onProgress = vi.fn();
   result.component.$on("back", onBack);
   result.component.$on("home", onHome);
-  return { ...result, onBack, onHome };
+  result.component.$on("progress", onProgress);
+  return { ...result, onBack, onHome, reported: () => onProgress.mock.calls.map(([event]) => event.detail) };
 };
 
 const prompt = () => document.querySelector(".flash__word")?.textContent ?? "";
 const answerBox = () => screen.getByLabelText("Your answer") as HTMLInputElement;
 const type = (value: string) => fireEvent.input(answerBox(), { target: { value } });
-const progress = () => document.querySelector(".fc-progress__text")?.textContent ?? "";
+const progressText = () => document.querySelector(".fc-progress__text")?.textContent ?? "";
+/** "Card 2 of 3", without the score. */
+const progress = () => progressText().split(" · ")[0];
+/** "Score: 10 (100%)". */
+const scoreLine = () => progressText().split(" · ")[1];
 const button = (name: string | RegExp) => screen.getByRole("button", { name });
 const feedback = () => document.querySelector(".fc-feedback") as HTMLElement;
 const historyRows = () =>
@@ -121,6 +128,40 @@ describe("play route (typing and voice)", () => {
       expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
       await type("Hear");
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
+    });
+
+    it("scores like multiple choice, taking points off for each different full-length wrong word", async () => {
+      const { reported } = renderPlay(words("bird", "cat", "dog"));
+      expect(scoreLine()).toBe("Score: 0");
+      const first = prompt();
+      const wrong = (letter: string) => letter.repeat(first.length);
+
+      await type(first.slice(0, -1));
+      await type(wrong("x"));
+      await type(`${wrong("x")} `);
+      await type(`${wrong("z")}z`);
+      await type(first);
+      expect(reported()).toEqual([{ score: 4, possible: 10, cardsPlayed: 1, cardsTotal: 3 }]);
+      expect(scoreLine()).toBe("Score: 4 (40%)");
+
+      await type(prompt());
+      await fireEvent.click(button("Skip"));
+      expect(reported()).toEqual([
+        { score: 4, possible: 10, cardsPlayed: 1, cardsTotal: 3 },
+        { score: 14, possible: 20, cardsPlayed: 2, cardsTotal: 3 },
+        { score: 14, possible: 30, cardsPlayed: 3, cardsTotal: 3 }
+      ]);
+      expect(screen.getByText("Score: 14")).toBeInTheDocument();
+      expect(screen.getByText("Percentage: 47%")).toBeInTheDocument();
+    });
+
+    it("never takes a card below the minimum score", async () => {
+      renderPlay(words("cat"));
+      for (const attempt of ["aaa", "bbb", "ccc", "ddd", "eee"]) {
+        await type(attempt);
+      }
+      await fireEvent.click(button("Mark correct"));
+      expect(screen.getByText("Score: 1")).toBeInTheDocument();
     });
 
     it("takes a short break after every five cards, but not after the last one", async () => {
@@ -231,6 +272,10 @@ describe("play route (typing and voice)", () => {
       await vi.waitFor(() => expect(feedback()).toHaveClass("fc-feedback--bad"));
       expect(screen.getByText("Last heard: dog")).toBeInTheDocument();
       expect(historyRows()).toEqual([["cat", "dog", "incorrect"]]);
+
+      await fireEvent.click(button("Mark correct"));
+      expect(screen.getByText("Score: 7")).toBeInTheDocument();
+      expect(screen.getByText("Percentage: 70%")).toBeInTheDocument();
     });
 
     it("accepts a sound-alike of the word", async () => {
@@ -261,6 +306,8 @@ describe("play route (typing and voice)", () => {
       const [, ambiguousMarkCorrect] = screen.getAllByRole("button", { name: "Mark correct" });
       await fireEvent.click(ambiguousMarkCorrect);
       expect(screen.getByText("You finished the deck!")).toBeInTheDocument();
+      // An unclear answer isn't a wrong one.
+      expect(screen.getByText("Score: 10")).toBeInTheDocument();
     });
 
     it("keeps the first guess when none of the heard words are right", async () => {
@@ -349,6 +396,7 @@ describe("play route (typing and voice)", () => {
       expect(feedback()).toHaveClass("fc-feedback--bad");
       await heard(recognizer, first);
       expect(progress()).toBe("Card 2 of 2");
+      expect(scoreLine()).toBe("Score: 7 (70%)");
       expect(historyRows()).toEqual([
         [first, first, "correct"],
         [first, "zzz", "incorrect"]
@@ -439,6 +487,7 @@ describe("play route (typing and voice)", () => {
       expect(restarted).not.toBe(recognizer);
       await heard(restarted, "an");
       expect(progress()).toBe("Card 2 of 2");
+      expect(scoreLine()).toBe("Score: 10 (100%)");
     });
 
     it("stops listening while paused and starts again on Go", async () => {
